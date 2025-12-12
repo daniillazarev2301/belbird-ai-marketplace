@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -29,12 +30,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const productTemplates = [
-  { id: "1", name: "Royal Canin Indoor", category: "Корма", hasDescription: false, hasSEO: false },
-  { id: "2", name: "Лежанка Premium XL", category: "Аксессуары", hasDescription: true, hasSEO: false },
-  { id: "3", name: "Семена томатов Черри", category: "Семена", hasDescription: false, hasSEO: true },
-  { id: "4", name: "Свеча ароматическая", category: "Декор", hasDescription: false, hasSEO: false },
-];
+interface ProductForGeneration {
+  id: string;
+  name: string;
+  category: string;
+  hasDescription: boolean;
+  hasSEO: boolean;
+}
 
 const AdminAIContent = () => {
   const [generating, setGenerating] = useState(false);
@@ -42,11 +44,52 @@ const AdminAIContent = () => {
   const [generatedSEO, setGeneratedSEO] = useState({ title: "", description: "", keywords: "" });
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [products, setProducts] = useState<ProductForGeneration[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [filter, setFilter] = useState("all");
   
   const [productName, setProductName] = useState("Royal Canin Indoor для кошек 2кг");
   const [category, setCategory] = useState("food");
   const [characteristics, setCharacteristics] = useState("Для домашних кошек, контроль веса, вывод шерсти, возраст 1-7 лет");
   const [tone, setTone] = useState("professional");
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, description, category_id')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const formatted = (data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        category: "Товары",
+        hasDescription: !!p.description && p.description.length > 50,
+        hasSEO: false,
+      }));
+
+      setProducts(formatted);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const filteredProducts = products.filter(p => {
+    if (filter === "no_desc") return !p.hasDescription;
+    if (filter === "no_seo") return !p.hasSEO;
+    return true;
+  });
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -87,7 +130,6 @@ const AdminAIContent = () => {
 
       if (error) throw error;
       
-      // Parse JSON from response
       try {
         const jsonMatch = data.content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -104,6 +146,49 @@ const AdminAIContent = () => {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleBulkGenerate = async (type: 'description' | 'seo') => {
+    if (selectedProducts.length === 0) return;
+    
+    setBulkGenerating(true);
+    setBulkProgress(0);
+
+    const selectedItems = products.filter(p => selectedProducts.includes(p.id));
+    let completed = 0;
+
+    for (const product of selectedItems) {
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-product-content', {
+          body: {
+            productName: product.name,
+            category: product.category,
+            characteristics: product.name,
+            tone: 'professional',
+            type
+          }
+        });
+
+        if (!error && data?.content) {
+          if (type === 'description') {
+            await supabase
+              .from('products')
+              .update({ description: data.content })
+              .eq('id', product.id);
+          }
+        }
+      } catch (error) {
+        console.error(`Error generating for ${product.name}:`, error);
+      }
+
+      completed++;
+      setBulkProgress(Math.round((completed / selectedItems.length) * 100));
+    }
+
+    toast.success(`Сгенерировано ${completed} описаний`);
+    setBulkGenerating(false);
+    setSelectedProducts([]);
+    fetchProducts();
   };
 
   const handleCopy = (text: string) => {
@@ -144,7 +229,6 @@ const AdminAIContent = () => {
           {/* Single Generation */}
           <TabsContent value="single" className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Input */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Параметры товара</CardTitle>
@@ -214,7 +298,6 @@ const AdminAIContent = () => {
                 </CardContent>
               </Card>
 
-              {/* Output */}
               <div className="space-y-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -286,10 +369,10 @@ const AdminAIContent = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      Выберите товары для генерации описаний и SEO-тегов
+                      Выберите товары из базы данных для генерации описаний
                     </p>
                     <div className="flex gap-2">
-                      <Select defaultValue="no_desc">
+                      <Select value={filter} onValueChange={setFilter}>
                         <SelectTrigger className="w-48">
                           <SelectValue placeholder="Фильтр" />
                         </SelectTrigger>
@@ -302,54 +385,93 @@ const AdminAIContent = () => {
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-border">
-                    <div className="p-3 border-b border-border bg-muted/50 flex items-center gap-3">
-                      <Checkbox
-                        checked={selectedProducts.length === productTemplates.length}
-                        onCheckedChange={() => {
-                          if (selectedProducts.length === productTemplates.length) {
-                            setSelectedProducts([]);
-                          } else {
-                            setSelectedProducts(productTemplates.map((p) => p.id));
-                          }
-                        }}
-                      />
-                      <span className="text-sm font-medium">Выбрать все</span>
-                      {selectedProducts.length > 0 && (
-                        <Badge variant="secondary">{selectedProducts.length} выбрано</Badge>
-                      )}
-                    </div>
-                    {productTemplates.map((product) => (
-                      <div
-                        key={product.id}
-                        className="p-3 border-b border-border last:border-0 flex items-center gap-3 hover:bg-muted/30 transition-colors"
-                      >
-                        <Checkbox
-                          checked={selectedProducts.includes(product.id)}
-                          onCheckedChange={() => toggleProduct(product.id)}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{product.category}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          {!product.hasDescription && (
-                            <Badge variant="outline" className="text-xs">Нет описания</Badge>
-                          )}
-                          {!product.hasSEO && (
-                            <Badge variant="outline" className="text-xs">Нет SEO</Badge>
-                          )}
-                        </div>
+                  {bulkGenerating && (
+                    <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm font-medium">Генерация описаний...</span>
                       </div>
-                    ))}
-                  </div>
+                      <Progress value={bulkProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">{bulkProgress}% завершено</p>
+                    </div>
+                  )}
+
+                  {loadingProducts ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border">
+                      <div className="p-3 border-b border-border bg-muted/50 flex items-center gap-3">
+                        <Checkbox
+                          checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                          onCheckedChange={() => {
+                            if (selectedProducts.length === filteredProducts.length) {
+                              setSelectedProducts([]);
+                            } else {
+                              setSelectedProducts(filteredProducts.map((p) => p.id));
+                            }
+                          }}
+                        />
+                        <span className="text-sm font-medium">Выбрать все</span>
+                        {selectedProducts.length > 0 && (
+                          <Badge variant="secondary">{selectedProducts.length} выбрано</Badge>
+                        )}
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {filteredProducts.length === 0 ? (
+                          <div className="p-8 text-center text-muted-foreground">
+                            <FileText className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">Нет товаров для отображения</p>
+                          </div>
+                        ) : (
+                          filteredProducts.map((product) => (
+                            <div
+                              key={product.id}
+                              className="p-3 border-b border-border last:border-0 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+                            >
+                              <Checkbox
+                                checked={selectedProducts.includes(product.id)}
+                                onCheckedChange={() => toggleProduct(product.id)}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{product.name}</p>
+                                <p className="text-xs text-muted-foreground">{product.category}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                {!product.hasDescription && (
+                                  <Badge variant="outline" className="text-xs">Нет описания</Badge>
+                                )}
+                                {!product.hasSEO && (
+                                  <Badge variant="outline" className="text-xs">Нет SEO</Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
-                    <Button disabled={selectedProducts.length === 0} className="gap-2">
-                      <Sparkles className="h-4 w-4" />
+                    <Button 
+                      disabled={selectedProducts.length === 0 || bulkGenerating} 
+                      onClick={() => handleBulkGenerate('description')}
+                      className="gap-2"
+                    >
+                      {bulkGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
                       Сгенерировать описания ({selectedProducts.length})
                     </Button>
-                    <Button disabled={selectedProducts.length === 0} variant="outline" className="gap-2">
+                    <Button 
+                      disabled={selectedProducts.length === 0 || bulkGenerating} 
+                      variant="outline" 
+                      onClick={() => handleBulkGenerate('seo')}
+                      className="gap-2"
+                    >
                       <Search className="h-4 w-4" />
                       Сгенерировать SEO ({selectedProducts.length})
                     </Button>

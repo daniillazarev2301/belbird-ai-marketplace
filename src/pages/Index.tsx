@@ -8,6 +8,7 @@ import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import PromoSection from "@/components/home/PromoSection";
 import BenefitsSection from "@/components/home/BenefitsSection";
+import AIRecommendations from "@/components/home/AIRecommendations";
 import AIChatWidget from "@/components/chat/AIChatWidget";
 
 const Index = () => {
@@ -34,6 +35,7 @@ const Index = () => {
           <HeroSection />
           <StoriesSection />
           <BenefitsSection />
+          <AIRecommendations />
           <CategorySection />
           <FeaturedProducts />
           <PromoSection />
