@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Search from "./pages/Search";
+import Product from "./pages/Product";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/search" element={<Search />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/product/:id" element={<Product />} />
             <Route path="/checkout" element={<Checkout />} />
             {/* Account */}
             <Route path="/account" element={<AccountProfile />} />
