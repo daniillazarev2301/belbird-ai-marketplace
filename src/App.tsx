@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import Catalog from "./pages/Catalog";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminProductEdit from "./pages/admin/AdminProductEdit";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminAIContent from "./pages/admin/AdminAIContent";
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/products" element={<AdminProducts />} />
+            <Route path="/admin/products/:id" element={<AdminProductEdit />} />
             <Route path="/admin/ai-content" element={<AdminAIContent />} />
             <Route path="/admin/media" element={<AdminMedia />} />
             <Route path="/admin/categories" element={<AdminCategories />} />

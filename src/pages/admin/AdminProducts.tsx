@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 const AdminProducts = () => {
+  const navigate = useNavigate();
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -269,7 +271,7 @@ const AdminProducts = () => {
               <Upload className="h-4 w-4" />
               Импорт
             </Button>
-            <Button size="sm" className="gap-1">
+            <Button size="sm" className="gap-1" onClick={() => navigate('/admin/products/new')}>
               <Plus className="h-4 w-4" />
               Добавить товар
             </Button>
@@ -336,11 +338,11 @@ const AdminProducts = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/admin/products/${product.id}`)}>
                           <Eye className="h-4 w-4 mr-2" />
                           Просмотр
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/admin/products/${product.id}`)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Редактировать
                         </DropdownMenuItem>
