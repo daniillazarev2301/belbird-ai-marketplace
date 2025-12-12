@@ -15,6 +15,13 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminMedia from "./pages/admin/AdminMedia";
 import AdminCategories from "./pages/admin/AdminCategories";
+import AccountProfile from "./pages/account/AccountProfile";
+import AccountOrders from "./pages/account/AccountOrders";
+import AccountPets from "./pages/account/AccountPets";
+import AccountSubscriptions from "./pages/account/AccountSubscriptions";
+import AccountLoyalty from "./pages/account/AccountLoyalty";
+import AccountFavorites from "./pages/account/AccountFavorites";
+import AccountSettings from "./pages/account/AccountSettings";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +34,15 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            {/* Account */}
+            <Route path="/account" element={<AccountProfile />} />
+            <Route path="/account/orders" element={<AccountOrders />} />
+            <Route path="/account/favorites" element={<AccountFavorites />} />
+            <Route path="/account/pets" element={<AccountPets />} />
+            <Route path="/account/subscriptions" element={<AccountSubscriptions />} />
+            <Route path="/account/loyalty" element={<AccountLoyalty />} />
+            <Route path="/account/settings" element={<AccountSettings />} />
+            {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/products" element={<AdminProducts />} />
