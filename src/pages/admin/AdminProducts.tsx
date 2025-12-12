@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Plus,
   Search,
   Filter,
@@ -39,7 +46,12 @@ import {
   Sparkles,
   Download,
   Upload,
+  Image,
+  Loader2,
+  X,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const products = [
   {
@@ -114,6 +126,11 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 const AdminProducts = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [selectedProductForUpload, setSelectedProductForUpload] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleAll = () => {
     if (selectedProducts.length === products.length) {
@@ -127,6 +144,55 @@ const AdminProducts = () => {
     setSelectedProducts((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
     );
+  };
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    setUploadingImages(true);
+    const newUrls: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `product-images/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('products')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast.error(`Ошибка загрузки ${file.name}`);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('products')
+          .getPublicUrl(filePath);
+
+        newUrls.push(publicUrl);
+      }
+
+      setUploadedImages(prev => [...prev, ...newUrls]);
+      toast.success(`Загружено ${newUrls.length} изображений`);
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast.error("Ошибка при загрузке изображений");
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeUploadedImage = (url: string) => {
+    setUploadedImages(prev => prev.filter(u => u !== url));
+  };
+
+  const openUploadDialog = (productId: string) => {
+    setSelectedProductForUpload(productId);
+    setUploadedImages([]);
+    setUploadDialogOpen(true);
   };
 
   return (
@@ -278,6 +344,10 @@ const AdminProducts = () => {
                           <Edit className="h-4 w-4 mr-2" />
                           Редактировать
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openUploadDialog(product.id)}>
+                          <Image className="h-4 w-4 mr-2" />
+                          Загрузить фото
+                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Copy className="h-4 w-4 mr-2" />
                           Дублировать
@@ -315,6 +385,73 @@ const AdminProducts = () => {
           </div>
         </div>
       </AdminLayout>
+
+      {/* Image Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Загрузка изображений товара</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleImageUpload(e.target.files)}
+              />
+              {uploadingImages ? (
+                <Loader2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground animate-spin" />
+              ) : (
+                <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+              )}
+              <p className="text-sm font-medium">
+                {uploadingImages ? "Загрузка..." : "Нажмите для выбора файлов"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                PNG, JPG, WEBP до 10MB
+              </p>
+            </div>
+
+            {uploadedImages.length > 0 && (
+              <div>
+                <Label className="text-sm">Загруженные изображения</Label>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  {uploadedImages.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={url}
+                        alt={`Uploaded ${index + 1}`}
+                        className="w-full h-20 object-cover rounded-lg"
+                      />
+                      <button
+                        onClick={() => removeUploadedImage(url)}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button variant="outline" className="flex-1" onClick={() => setUploadDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button className="flex-1" disabled={uploadedImages.length === 0}>
+                Сохранить ({uploadedImages.length})
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

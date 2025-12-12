@@ -20,13 +20,14 @@ import {
   Sparkles,
   Wand2,
   FileText,
-  Image,
   RefreshCw,
   Copy,
   Check,
   Loader2,
   Search,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const productTemplates = [
   { id: "1", name: "Royal Canin Indoor", category: "Корма", hasDescription: false, hasSEO: false },
@@ -41,32 +42,74 @@ const AdminAIContent = () => {
   const [generatedSEO, setGeneratedSEO] = useState({ title: "", description: "", keywords: "" });
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  
+  const [productName, setProductName] = useState("Royal Canin Indoor для кошек 2кг");
+  const [category, setCategory] = useState("food");
+  const [characteristics, setCharacteristics] = useState("Для домашних кошек, контроль веса, вывод шерсти, возраст 1-7 лет");
+  const [tone, setTone] = useState("professional");
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setGenerating(true);
-    setTimeout(() => {
-      setGeneratedDescription(
-        "Royal Canin Indoor — премиальный сухой корм, специально разработанный для кошек, ведущих домашний образ жизни. Уникальная формула с оптимальным содержанием калорий помогает поддерживать идеальный вес вашего питомца, а специальные волокна способствуют естественному выведению шерсти. Обогащён витаминами и минералами для здоровой кожи и блестящей шерсти. Идеально подходит для кошек от 1 до 7 лет."
-      );
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-product-content', {
+        body: {
+          productName,
+          category,
+          characteristics,
+          tone,
+          type: 'description'
+        }
+      });
+
+      if (error) throw error;
+      setGeneratedDescription(data.content);
+      toast.success("Описание сгенерировано!");
+    } catch (error) {
+      console.error('Error generating description:', error);
+      toast.error("Ошибка при генерации описания");
+    } finally {
       setGenerating(false);
-    }, 2000);
+    }
   };
 
-  const handleGenerateSEO = () => {
+  const handleGenerateSEO = async () => {
     setGenerating(true);
-    setTimeout(() => {
-      setGeneratedSEO({
-        title: "Royal Canin Indoor для кошек — купить корм по выгодной цене | BelBird",
-        description: "Премиальный корм Royal Canin Indoor для домашних кошек. Поддержание веса, вывод шерсти, здоровая кожа. Доставка по всей России.",
-        keywords: "royal canin indoor, корм для кошек, премиум корм, домашние кошки",
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-product-content', {
+        body: {
+          productName,
+          category,
+          characteristics,
+          tone,
+          type: 'seo'
+        }
       });
+
+      if (error) throw error;
+      
+      // Parse JSON from response
+      try {
+        const jsonMatch = data.content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const seoData = JSON.parse(jsonMatch[0]);
+          setGeneratedSEO(seoData);
+        }
+      } catch {
+        setGeneratedSEO({ title: data.content, description: "", keywords: "" });
+      }
+      toast.success("SEO-теги сгенерированы!");
+    } catch (error) {
+      console.error('Error generating SEO:', error);
+      toast.error("Ошибка при генерации SEO");
+    } finally {
       setGenerating(false);
-    }, 1500);
+    }
   };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
+    toast.success("Скопировано!");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -109,11 +152,14 @@ const AdminAIContent = () => {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Название товара</Label>
-                    <Input defaultValue="Royal Canin Indoor для кошек 2кг" />
+                    <Input 
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Категория</Label>
-                    <Select defaultValue="food">
+                    <Select value={category} onValueChange={setCategory}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -121,6 +167,8 @@ const AdminAIContent = () => {
                         <SelectItem value="food">Корма для кошек</SelectItem>
                         <SelectItem value="accessories">Аксессуары</SelectItem>
                         <SelectItem value="health">Здоровье</SelectItem>
+                        <SelectItem value="home">Уют и Дом</SelectItem>
+                        <SelectItem value="garden">Сад и Огород</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -128,12 +176,13 @@ const AdminAIContent = () => {
                     <Label>Ключевые характеристики</Label>
                     <Textarea
                       placeholder="Введите основные характеристики товара..."
-                      defaultValue="Для домашних кошек, контроль веса, вывод шерсти, возраст 1-7 лет"
+                      value={characteristics}
+                      onChange={(e) => setCharacteristics(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Тон описания</Label>
-                    <Select defaultValue="professional">
+                    <Select value={tone} onValueChange={setTone}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -171,8 +220,8 @@ const AdminAIContent = () => {
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-base">Описание товара</CardTitle>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleGenerate()}>
-                        <RefreshCw className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={handleGenerate} disabled={generating}>
+                        <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
                       </Button>
                       <Button
                         variant="ghost"
@@ -190,7 +239,7 @@ const AdminAIContent = () => {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                         <Sparkles className="h-8 w-8 mb-2" />
-                        <p className="text-sm">Нажмите "Сгенерировать" для создания описания</p>
+                        <p className="text-sm">Нажмите &quot;Сгенерировать&quot; для создания описания</p>
                       </div>
                     )}
                   </CardContent>
@@ -213,7 +262,7 @@ const AdminAIContent = () => {
                       <div>
                         <Label className="text-xs text-muted-foreground">Keywords</Label>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {generatedSEO.keywords.split(", ").map((keyword) => (
+                          {generatedSEO.keywords.split(", ").filter(Boolean).map((keyword) => (
                             <Badge key={keyword} variant="secondary" className="text-xs">
                               {keyword}
                             </Badge>
@@ -367,7 +416,7 @@ const AdminAIContent = () => {
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <FileText className="h-12 w-12 mb-3" />
                     <p className="text-sm text-center">
-                      Заполните параметры и нажмите "Сгенерировать"
+                      Заполните параметры и нажмите &quot;Сгенерировать&quot;
                       <br />
                       для создания статьи
                     </p>
