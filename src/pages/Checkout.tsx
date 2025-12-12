@@ -1,0 +1,419 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, MapPin, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown } from "lucide-react";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import MobileNav from "@/components/layout/MobileNav";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+
+interface DeliveryOption {
+  id: string;
+  name: string;
+  logo: string;
+  price: number;
+  days: string;
+  description: string;
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  description: string;
+}
+
+const deliveryOptions: DeliveryOption[] = [
+  {
+    id: "cdek",
+    name: "СДЭК",
+    logo: "СДЭК",
+    price: 350,
+    days: "2-3 дня",
+    description: "Доставка до пункта выдачи или курьером"
+  },
+  {
+    id: "boxberry",
+    name: "Boxberry",
+    logo: "Boxberry",
+    price: 290,
+    days: "3-5 дней",
+    description: "Более 3000 пунктов выдачи по России"
+  },
+  {
+    id: "post",
+    name: "Почта России",
+    logo: "Почта",
+    price: 250,
+    days: "5-10 дней",
+    description: "Доставка в любое отделение почты"
+  },
+  {
+    id: "courier",
+    name: "Курьер BelBird",
+    logo: "BelBird",
+    price: 490,
+    days: "1-2 дня",
+    description: "Экспресс-доставка до двери"
+  }
+];
+
+const paymentMethods: PaymentMethod[] = [
+  {
+    id: "card",
+    name: "Банковская карта",
+    icon: <CreditCard className="h-5 w-5" />,
+    description: "Visa, Mastercard, МИР"
+  },
+  {
+    id: "sbp",
+    name: "СБП",
+    icon: <Building2 className="h-5 w-5" />,
+    description: "Система быстрых платежей"
+  },
+  {
+    id: "wallet",
+    name: "ЮMoney",
+    icon: <Wallet className="h-5 w-5" />,
+    description: "Оплата электронным кошельком"
+  },
+  {
+    id: "cash",
+    name: "При получении",
+    icon: <Truck className="h-5 w-5" />,
+    description: "Наличными или картой курьеру"
+  }
+];
+
+const orderItems = [
+  { name: "Корм для собак премиум класса с ягненком", quantity: 2, price: 4590 },
+  { name: "Лежанка ортопедическая для средних пород", quantity: 1, price: 3200 }
+];
+
+const Checkout = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [step, setStep] = useState(1);
+  const [delivery, setDelivery] = useState("cdek");
+  const [payment, setPayment] = useState("card");
+  const [isOrderOpen, setIsOrderOpen] = useState(false);
+
+  const [contactData, setContactData] = useState({
+    name: "",
+    phone: "",
+    email: ""
+  });
+
+  const [addressData, setAddressData] = useState({
+    city: "",
+    street: "",
+    house: "",
+    apartment: "",
+    comment: ""
+  });
+
+  const selectedDelivery = deliveryOptions.find(d => d.id === delivery);
+  const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryPrice = selectedDelivery?.price || 0;
+  const total = subtotal + deliveryPrice;
+
+  const handleSubmit = () => {
+    toast({
+      title: "Заказ оформлен!",
+      description: "Номер заказа: #BEL-2024-1234. Мы отправим подтверждение на вашу почту.",
+    });
+    navigate("/account/orders");
+  };
+
+  const isContactValid = contactData.name && contactData.phone && contactData.email;
+  const isAddressValid = addressData.city && addressData.street && addressData.house;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container mx-auto px-4 py-6 pb-24 lg:pb-12">
+        {/* Back Button */}
+        <Button variant="ghost" className="mb-4" asChild>
+          <Link to="/cart">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Вернуться в корзину
+          </Link>
+        </Button>
+
+        <h1 className="text-2xl font-bold mb-6">Оформление заказа</h1>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Step 1: Contact */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${step >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    {step > 1 ? <Check className="h-4 w-4" /> : "1"}
+                  </div>
+                  Контактные данные
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Имя и фамилия *</Label>
+                    <Input 
+                      id="name" 
+                      placeholder="Иван Иванов"
+                      value={contactData.name}
+                      onChange={(e) => setContactData({...contactData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Телефон *</Label>
+                    <Input 
+                      id="phone" 
+                      placeholder="+7 (999) 123-45-67"
+                      value={contactData.phone}
+                      onChange={(e) => setContactData({...contactData, phone: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    placeholder="ivan@example.com"
+                    value={contactData.email}
+                    onChange={(e) => setContactData({...contactData, email: e.target.value})}
+                  />
+                </div>
+                {step === 1 && (
+                  <Button 
+                    className="w-full sm:w-auto"
+                    onClick={() => setStep(2)}
+                    disabled={!isContactValid}
+                  >
+                    Продолжить
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Step 2: Delivery */}
+            <Card className={step < 2 ? "opacity-50 pointer-events-none" : ""}>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${step >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    {step > 2 ? <Check className="h-4 w-4" /> : "2"}
+                  </div>
+                  Способ доставки
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <RadioGroup value={delivery} onValueChange={setDelivery}>
+                  {deliveryOptions.map((option) => (
+                    <div 
+                      key={option.id}
+                      className={`flex items-center space-x-4 p-4 rounded-lg border cursor-pointer transition-colors ${delivery === option.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                      onClick={() => setDelivery(option.id)}
+                    >
+                      <RadioGroupItem value={option.id} id={option.id} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{option.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {option.days}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{option.description}</p>
+                      </div>
+                      <span className="font-bold">{option.price} ₽</span>
+                    </div>
+                  ))}
+                </RadioGroup>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-medium">Адрес доставки</h3>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="city">Город *</Label>
+                      <Input 
+                        id="city" 
+                        placeholder="Москва"
+                        value={addressData.city}
+                        onChange={(e) => setAddressData({...addressData, city: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="street">Улица *</Label>
+                      <Input 
+                        id="street" 
+                        placeholder="ул. Пушкина"
+                        value={addressData.street}
+                        onChange={(e) => setAddressData({...addressData, street: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="house">Дом *</Label>
+                      <Input 
+                        id="house" 
+                        placeholder="10"
+                        value={addressData.house}
+                        onChange={(e) => setAddressData({...addressData, house: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="apartment">Квартира</Label>
+                      <Input 
+                        id="apartment" 
+                        placeholder="25"
+                        value={addressData.apartment}
+                        onChange={(e) => setAddressData({...addressData, apartment: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="comment">Комментарий к заказу</Label>
+                    <Textarea 
+                      id="comment" 
+                      placeholder="Код домофона, этаж, пожелания курьеру..."
+                      value={addressData.comment}
+                      onChange={(e) => setAddressData({...addressData, comment: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                {step === 2 && (
+                  <Button 
+                    className="w-full sm:w-auto"
+                    onClick={() => setStep(3)}
+                    disabled={!isAddressValid}
+                  >
+                    Продолжить
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Step 3: Payment */}
+            <Card className={step < 3 ? "opacity-50 pointer-events-none" : ""}>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${step >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                    3
+                  </div>
+                  Способ оплаты
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <RadioGroup value={payment} onValueChange={setPayment}>
+                  {paymentMethods.map((method) => (
+                    <div 
+                      key={method.id}
+                      className={`flex items-center space-x-4 p-4 rounded-lg border cursor-pointer transition-colors ${payment === method.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                      onClick={() => setPayment(method.id)}
+                    >
+                      <RadioGroupItem value={method.id} id={method.id} />
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                          {method.icon}
+                        </div>
+                        <div>
+                          <span className="font-medium">{method.name}</span>
+                          <p className="text-sm text-muted-foreground">{method.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </RadioGroup>
+
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+                  <Shield className="h-4 w-4 text-green-600" />
+                  <span>Безопасная оплата через защищённое соединение</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Order Summary */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-4">
+              <CardContent className="p-6">
+                <Collapsible open={isOrderOpen} onOpenChange={setIsOrderOpen}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full mb-4">
+                    <h2 className="text-lg font-semibold">Ваш заказ</h2>
+                    <ChevronDown className={`h-5 w-5 transition-transform ${isOrderOpen ? 'rotate-180' : ''}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="space-y-3 mb-4">
+                      {orderItems.map((item, index) => (
+                        <div key={index} className="flex gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-muted flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm line-clamp-2">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">×{item.quantity}</p>
+                          </div>
+                          <span className="text-sm font-medium">{(item.price * item.quantity).toLocaleString()} ₽</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Товары</span>
+                    <span>{subtotal.toLocaleString()} ₽</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Доставка ({selectedDelivery?.name})</span>
+                    <span>{deliveryPrice.toLocaleString()} ₽</span>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="flex justify-between text-lg font-bold mb-6">
+                  <span>Итого</span>
+                  <span>{total.toLocaleString()} ₽</span>
+                </div>
+
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={handleSubmit}
+                  disabled={step < 3}
+                >
+                  Оплатить {total.toLocaleString()} ₽
+                </Button>
+
+                <p className="text-xs text-muted-foreground text-center mt-4">
+                  Нажимая кнопку, вы соглашаетесь с офертой и политикой конфиденциальности
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+      <Footer />
+      <MobileNav />
+    </div>
+  );
+};
+
+export default Checkout;
