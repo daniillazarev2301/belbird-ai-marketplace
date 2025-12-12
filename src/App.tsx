@@ -10,6 +10,8 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Search from "./pages/Search";
 import Product from "./pages/Product";
+import Auth from "./pages/Auth";
+import Catalog from "./pages/Catalog";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -38,6 +40,9 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/catalog/:category" element={<Catalog />} />
             <Route path="/search" element={<Search />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/product/:id" element={<Product />} />
