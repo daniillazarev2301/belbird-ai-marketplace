@@ -46,6 +46,7 @@ const mainNavItems = [
 const catalogItems = [
   { title: "Все товары", url: "/admin/products", icon: Package },
   { title: "Категории", url: "/admin/categories", icon: Tags },
+  { title: "Бренды", url: "/admin/brands", icon: Tags },
   { title: "AI-Контент", url: "/admin/ai-content", icon: Sparkles },
   { title: "Медиа-центр", url: "/admin/media", icon: Image },
 ];

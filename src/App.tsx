@@ -32,6 +32,7 @@ import AdminSiteSettings from "./pages/admin/AdminSiteSettings";
 import AdminReviews from "./pages/admin/AdminReviews";
 import AdminBlog from "./pages/admin/AdminBlog";
 import AdminDelivery from "./pages/admin/AdminDelivery";
+import AdminBrands from "./pages/admin/AdminBrands";
 import Compare from "./pages/Compare";
 import PaymentResult from "./pages/PaymentResult";
 import AccountProfile from "./pages/account/AccountProfile";
@@ -95,6 +96,7 @@ const App = () => (
               <Route path="/admin/products/:id" element={<AdminProductEdit />} />
               <Route path="/admin/ai-content" element={<AdminAIContent />} />
               <Route path="/admin/media" element={<AdminMedia />} />
+              <Route path="/admin/brands" element={<AdminBrands />} />
               <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/admin/pages" element={<AdminPages />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
