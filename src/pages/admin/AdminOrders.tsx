@@ -54,6 +54,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { exportToExcel, formatDataForExport } from "@/utils/exportToExcel";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 interface OrderItem {
   id: string;
@@ -106,6 +107,12 @@ const AdminOrders = () => {
     status: "",
     payment_status: "",
     notes: "",
+  });
+
+  // Realtime subscription
+  useRealtimeSubscription({
+    table: "orders",
+    queryKey: ["admin-orders"],
   });
 
   // Fetch orders with customer info
