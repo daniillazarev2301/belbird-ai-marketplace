@@ -54,6 +54,10 @@ const AdminSiteSettings = () => {
   const [payment, setPayment] = useState({
     methods: [] as string[],
     installment_available: false,
+    alfa_bank_enabled: false,
+    alfa_bank_username: '',
+    alfa_bank_password: '',
+    alfa_bank_test_mode: true,
   });
   
   const [features, setFeatures] = useState({
@@ -421,53 +425,134 @@ const AdminSiteSettings = () => {
 
         {/* Payment */}
         <TabsContent value="payment">
-          <Card>
-            <CardHeader>
-              <CardTitle>Способы оплаты</CardTitle>
-              <CardDescription>Настройка доступных способов оплаты</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <Label>Доступные способы оплаты</Label>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {[
-                    { id: 'card', label: 'Банковская карта' },
-                    { id: 'sbp', label: 'СБП (Система быстрых платежей)' },
-                    { id: 'cash', label: 'Наличные при получении' },
-                    { id: 'online', label: 'Онлайн-оплата' },
-                  ].map((method) => (
-                    <div key={method.id} className="flex items-center space-x-2">
-                      <Switch
-                        id={method.id}
-                        checked={payment.methods?.includes(method.id)}
-                        onCheckedChange={(checked) => {
-                          setPayment({
-                            ...payment,
-                            methods: checked
-                              ? [...(payment.methods || []), method.id]
-                              : payment.methods?.filter(m => m !== method.id) || []
-                          });
-                        }}
-                      />
-                      <Label htmlFor={method.id}>{method.label}</Label>
-                    </div>
-                  ))}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Способы оплаты</CardTitle>
+                <CardDescription>Настройка доступных способов оплаты</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <Label>Доступные способы оплаты</Label>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      { id: 'card', label: 'Банковская карта' },
+                      { id: 'sbp', label: 'СБП (Система быстрых платежей)' },
+                      { id: 'cash', label: 'Наличные при получении' },
+                      { id: 'online', label: 'Онлайн-оплата' },
+                    ].map((method) => (
+                      <div key={method.id} className="flex items-center space-x-2">
+                        <Switch
+                          id={method.id}
+                          checked={payment.methods?.includes(method.id)}
+                          onCheckedChange={(checked) => {
+                            setPayment({
+                              ...payment,
+                              methods: checked
+                                ? [...(payment.methods || []), method.id]
+                                : payment.methods?.filter(m => m !== method.id) || []
+                            });
+                          }}
+                        />
+                        <Label htmlFor={method.id}>{method.label}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="installment"
-                  checked={payment.installment_available}
-                  onCheckedChange={(checked) => setPayment({ ...payment, installment_available: checked })}
-                />
-                <Label htmlFor="installment">Доступна рассрочка</Label>
-              </div>
-              <Button onClick={() => handleSave('payment', payment)} disabled={updateSettings.isPending}>
-                {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Сохранить
-              </Button>
-            </CardContent>
-          </Card>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="installment"
+                    checked={payment.installment_available}
+                    onCheckedChange={(checked) => setPayment({ ...payment, installment_available: checked })}
+                  />
+                  <Label htmlFor="installment">Доступна рассрочка</Label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alfa-Bank Integration */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Интеграция с Альфа-Банком
+                </CardTitle>
+                <CardDescription>
+                  Настройки подключения к платежному шлюзу Альфа-Банка для приема онлайн-платежей
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                  <div>
+                    <Label htmlFor="alfa_bank_enabled" className="text-base font-medium">Включить Альфа-Банк</Label>
+                    <p className="text-sm text-muted-foreground">Активировать прием платежей через Альфа-Банк</p>
+                  </div>
+                  <Switch
+                    id="alfa_bank_enabled"
+                    checked={payment.alfa_bank_enabled}
+                    onCheckedChange={(checked) => setPayment({ ...payment, alfa_bank_enabled: checked })}
+                  />
+                </div>
+
+                {payment.alfa_bank_enabled && (
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between p-3 border rounded-lg border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="alfa_bank_test_mode"
+                          checked={payment.alfa_bank_test_mode}
+                          onCheckedChange={(checked) => setPayment({ ...payment, alfa_bank_test_mode: checked })}
+                        />
+                        <Label htmlFor="alfa_bank_test_mode" className="font-medium">
+                          Тестовый режим
+                        </Label>
+                      </div>
+                      <Badge variant={payment.alfa_bank_test_mode ? "secondary" : "default"}>
+                        {payment.alfa_bank_test_mode ? "Тест" : "Боевой"}
+                      </Badge>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="alfa_bank_username">Логин мерчанта</Label>
+                        <Input
+                          id="alfa_bank_username"
+                          value={payment.alfa_bank_username}
+                          onChange={(e) => setPayment({ ...payment, alfa_bank_username: e.target.value })}
+                          placeholder="merchant-login"
+                        />
+                        <p className="text-xs text-muted-foreground">Логин, полученный от Альфа-Банка</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="alfa_bank_password">Пароль мерчанта</Label>
+                        <Input
+                          id="alfa_bank_password"
+                          type="password"
+                          value={payment.alfa_bank_password}
+                          onChange={(e) => setPayment({ ...payment, alfa_bank_password: e.target.value })}
+                          placeholder="••••••••"
+                        />
+                        <p className="text-xs text-muted-foreground">Пароль для API Альфа-Банка</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-muted/30">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Важно:</strong> Для получения учетных данных API необходимо заключить договор 
+                        эквайринга с Альфа-Банком. После подключения вы сможете принимать платежи банковскими 
+                        картами Visa, MasterCard, МИР и через СБП.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={() => handleSave('payment', payment)} disabled={updateSettings.isPending}>
+                  {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Сохранить настройки оплаты
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Features */}

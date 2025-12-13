@@ -40,6 +40,10 @@ export interface DeliverySettings {
 export interface PaymentSettings {
   methods: string[];
   installment_available: boolean;
+  alfa_bank_enabled: boolean;
+  alfa_bank_username: string;
+  alfa_bank_password: string;
+  alfa_bank_test_mode: boolean;
 }
 
 export interface FeatureSettings {
