@@ -53,6 +53,7 @@ const contentItems = [
 
 const salesItems = [
   { title: "Заказы", url: "/admin/orders", icon: ShoppingCart },
+  { title: "Промокоды", url: "/admin/promo-codes", icon: Tags },
   { title: "Клиенты (CRM)", url: "/admin/customers", icon: Users },
 ];
 

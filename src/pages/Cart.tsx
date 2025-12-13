@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Minus, Plus, Trash2, Heart, ShoppingBag, ArrowRight, Tag, Truck } from "lucide-react";
+import { Minus, Plus, Trash2, Heart, ShoppingBag, ArrowRight, Tag, Truck, Loader2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -10,12 +10,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCart } from "@/contexts/CartContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface AppliedPromo {
+  code: string;
+  discount_percent: number | null;
+  discount_amount: number | null;
+}
 
 const Cart = () => {
   const { items, removeItem, updateQuantity, getTotal } = useCart();
   const [selectedItems, setSelectedItems] = useState<string[]>(items.map(i => i.id));
   const [promoCode, setPromoCode] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
 
   const toggleSelect = (id: string) => {
     setSelectedItems(prev => 
@@ -29,15 +38,76 @@ const Cart = () => {
     setSelectedItems(selectedItems.length === items.length ? [] : items.map(i => i.id));
   };
 
-  const applyPromo = () => {
-    if (promoCode.toLowerCase() === "belbird10") {
-      setPromoApplied(true);
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    
+    setIsCheckingPromo(true);
+    try {
+      const { data, error } = await supabase
+        .from("promo_codes")
+        .select("*")
+        .eq("code", promoCode.toUpperCase())
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        toast.error("Промокод не найден или недействителен");
+        return;
+      }
+
+      // Check if expired
+      if (data.valid_until && new Date(data.valid_until) < new Date()) {
+        toast.error("Срок действия промокода истёк");
+        return;
+      }
+
+      // Check max uses
+      if (data.max_uses && data.used_count >= data.max_uses) {
+        toast.error("Промокод исчерпан");
+        return;
+      }
+
+      // Check min order amount
+      const subtotal = items.filter(item => selectedItems.includes(item.id))
+        .reduce((sum, item) => sum + item.price * item.quantity, 0);
+      
+      if (data.min_order_amount && subtotal < data.min_order_amount) {
+        toast.error(`Минимальная сумма заказа для этого промокода: ${data.min_order_amount.toLocaleString()} ₽`);
+        return;
+      }
+
+      setAppliedPromo({
+        code: data.code,
+        discount_percent: data.discount_percent,
+        discount_amount: data.discount_amount,
+      });
+      toast.success("Промокод применён!");
+    } catch (error) {
+      console.error("Error checking promo code:", error);
+      toast.error("Ошибка при проверке промокода");
+    } finally {
+      setIsCheckingPromo(false);
     }
+  };
+
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode("");
   };
 
   const selectedCartItems = items.filter(item => selectedItems.includes(item.id));
   const subtotal = selectedCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
+  
+  let discount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.discount_percent) {
+      discount = Math.round(subtotal * appliedPromo.discount_percent / 100);
+    } else if (appliedPromo.discount_amount) {
+      discount = Math.min(appliedPromo.discount_amount, subtotal);
+    }
+  }
   const total = subtotal - discount;
 
   if (items.length === 0) {
@@ -184,23 +254,40 @@ const Cart = () => {
                 <h2 className="text-lg font-semibold mb-4">Ваш заказ</h2>
 
                 {/* Promo Code */}
-                <div className="flex gap-2 mb-4">
-                  <Input 
-                    placeholder="Промокод"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    disabled={promoApplied}
-                  />
-                  <Button 
-                    variant="outline" 
-                    onClick={applyPromo}
-                    disabled={promoApplied || !promoCode}
-                  >
-                    <Tag className="h-4 w-4" />
-                  </Button>
-                </div>
-                {promoApplied && (
-                  <p className="text-sm text-green-600 mb-4">Промокод применён: -10%</p>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg mb-4">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-primary" />
+                      <span className="font-mono font-medium">{appliedPromo.code}</span>
+                      <span className="text-sm text-muted-foreground">
+                        (-{appliedPromo.discount_percent 
+                          ? `${appliedPromo.discount_percent}%` 
+                          : `${appliedPromo.discount_amount?.toLocaleString()} ₽`})
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={removePromo}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 mb-4">
+                    <Input 
+                      placeholder="Промокод"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={applyPromo}
+                      disabled={isCheckingPromo || !promoCode}
+                    >
+                      {isCheckingPromo ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Tag className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 )}
 
                 <Separator className="my-4" />
