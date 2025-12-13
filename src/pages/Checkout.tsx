@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2 } from "lucide-react";
+import { ArrowLeft, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2, MapPin } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -17,14 +17,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import DeliveryCalculator from "@/components/checkout/DeliveryCalculator";
+import PickupPointMap from "@/components/checkout/PickupPointMap";
 
-interface DeliveryOption {
+interface PickupPoint {
   id: string;
   name: string;
-  logo: string;
-  price: number;
-  days: string;
-  description: string;
+  address: string;
+  city: string;
+  lat: number;
+  lng: number;
+  provider: string;
+  workTime?: string;
+  phone?: string;
 }
 
 interface PaymentMethod {
@@ -33,41 +38,6 @@ interface PaymentMethod {
   icon: React.ReactNode;
   description: string;
 }
-
-const deliveryOptions: DeliveryOption[] = [
-  {
-    id: "cdek",
-    name: "СДЭК",
-    logo: "СДЭК",
-    price: 350,
-    days: "2-3 дня",
-    description: "Доставка до пункта выдачи или курьером"
-  },
-  {
-    id: "boxberry",
-    name: "Boxberry",
-    logo: "Boxberry",
-    price: 290,
-    days: "3-5 дней",
-    description: "Более 3000 пунктов выдачи по России"
-  },
-  {
-    id: "post",
-    name: "Почта России",
-    logo: "Почта",
-    price: 250,
-    days: "5-10 дней",
-    description: "Доставка в любое отделение почты"
-  },
-  {
-    id: "courier",
-    name: "Курьер BelBird",
-    logo: "BelBird",
-    price: 490,
-    days: "1-2 дня",
-    description: "Экспресс-доставка до двери"
-  }
-];
 
 const paymentMethods: PaymentMethod[] = [
   {
@@ -102,11 +72,13 @@ const Checkout = () => {
   const { items, getTotal, clearCart } = useCart();
   const { settings } = useSiteSettings();
   const [step, setStep] = useState(1);
-  const [delivery, setDelivery] = useState("cdek");
+  const [deliveryProvider, setDeliveryProvider] = useState("");
+  const [deliveryPrice, setDeliveryPrice] = useState(0);
   const [payment, setPayment] = useState("card");
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null);
   
   const alfaBankEnabled = settings?.payment?.alfa_bank_enabled ?? false;
 
@@ -124,9 +96,7 @@ const Checkout = () => {
     comment: ""
   });
 
-  const selectedDelivery = deliveryOptions.find(d => d.id === delivery);
   const subtotal = getTotal();
-  const deliveryPrice = selectedDelivery?.price || 0;
   const total = subtotal + deliveryPrice;
 
   const handleSubmit = async () => {
@@ -153,7 +123,12 @@ const Checkout = () => {
             house: addressData.house,
             apartment: addressData.apartment,
             comment: addressData.comment,
-            delivery: delivery
+            delivery_provider: deliveryProvider,
+            pickup_point: selectedPickupPoint ? {
+              id: selectedPickupPoint.id,
+              name: selectedPickupPoint.name,
+              address: selectedPickupPoint.address,
+            } : null
           },
           notes: addressData.comment
         })
@@ -248,7 +223,7 @@ const Checkout = () => {
   };
 
   const isContactValid = contactData.name && contactData.phone && contactData.email;
-  const isAddressValid = addressData.city && addressData.street && addressData.house;
+  const isAddressValid = addressData.city && (selectedPickupPoint || (addressData.street && addressData.house));
 
   if (items.length === 0) {
     return (
@@ -352,47 +327,38 @@ const Checkout = () => {
                   Способ доставки
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <RadioGroup value={delivery} onValueChange={setDelivery}>
-                  {deliveryOptions.map((option) => (
-                    <div 
-                      key={option.id}
-                      className={`flex items-center space-x-4 p-4 rounded-lg border cursor-pointer transition-colors ${delivery === option.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                      onClick={() => setDelivery(option.id)}
-                    >
-                      <RadioGroupItem value={option.id} id={option.id} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{option.name}</span>
-                          <Badge variant="secondary" className="text-xs">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {option.days}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{option.description}</p>
-                      </div>
-                      <span className="font-bold">{option.price} ₽</span>
-                    </div>
-                  ))}
-                </RadioGroup>
+              <CardContent className="space-y-6">
+                {/* Delivery Calculator with API Integration */}
+                <DeliveryCalculator
+                  city={addressData.city}
+                  onCityChange={(city) => setAddressData({ ...addressData, city })}
+                  selectedProvider={deliveryProvider}
+                  onProviderChange={setDeliveryProvider}
+                  onPriceChange={setDeliveryPrice}
+                  cartTotal={subtotal}
+                />
+
+                {/* Pickup Point Selection */}
+                {deliveryProvider && ["cdek", "boxberry", "russian_post"].includes(deliveryProvider) && addressData.city && (
+                  <>
+                    <Separator />
+                    <PickupPointMap
+                      provider={deliveryProvider}
+                      city={addressData.city}
+                      onSelect={setSelectedPickupPoint}
+                      selectedPoint={selectedPickupPoint}
+                    />
+                  </>
+                )}
 
                 <Separator />
 
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-medium">Адрес доставки</h3>
+                    <h3 className="font-medium">Адрес доставки (для курьера)</h3>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="city">Город *</Label>
-                      <Input 
-                        id="city" 
-                        placeholder="Москва"
-                        value={addressData.city}
-                        onChange={(e) => setAddressData({...addressData, city: e.target.value})}
-                      />
-                    </div>
                     <div className="space-y-2 sm:col-span-2">
                       <Label htmlFor="street">Улица *</Label>
                       <Input 
@@ -521,8 +487,8 @@ const Checkout = () => {
                     <span>{subtotal.toLocaleString()} ₽</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Доставка ({selectedDelivery?.name})</span>
-                    <span>{deliveryPrice.toLocaleString()} ₽</span>
+                    <span className="text-muted-foreground">Доставка</span>
+                    <span>{deliveryPrice === 0 ? "Бесплатно" : `${deliveryPrice.toLocaleString()} ₽`}</span>
                   </div>
                 </div>
 
