@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { useCart } from "@/contexts/CartContext";
 
 export interface Product {
   id: string;
@@ -28,12 +29,22 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
+  const { addItem } = useCart();
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      oldPrice: product.oldPrice,
+      quantity: 1,
+      image: product.image,
+      slug: product.slug || product.id,
+    });
     toast({
       title: "Добавлено в корзину",
       description: product.name,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, MapPin, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -14,6 +14,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/contexts/CartContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DeliveryOption {
   id: string;
@@ -93,18 +95,15 @@ const paymentMethods: PaymentMethod[] = [
   }
 ];
 
-const orderItems = [
-  { name: "Корм для собак премиум класса с ягненком", quantity: 2, price: 4590 },
-  { name: "Лежанка ортопедическая для средних пород", quantity: 1, price: 3200 }
-];
-
 const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { items, getTotal, clearCart } = useCart();
   const [step, setStep] = useState(1);
   const [delivery, setDelivery] = useState("cdek");
   const [payment, setPayment] = useState("card");
   const [isOrderOpen, setIsOrderOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [contactData, setContactData] = useState({
     name: "",
@@ -121,20 +120,102 @@ const Checkout = () => {
   });
 
   const selectedDelivery = deliveryOptions.find(d => d.id === delivery);
-  const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = getTotal();
   const deliveryPrice = selectedDelivery?.price || 0;
   const total = subtotal + deliveryPrice;
 
-  const handleSubmit = () => {
-    toast({
-      title: "Заказ оформлен!",
-      description: "Номер заказа: #BEL-2024-1234. Мы отправим подтверждение на вашу почту.",
-    });
-    navigate("/account/orders");
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: user?.id || null,
+          total_amount: total,
+          status: "pending",
+          payment_method: payment,
+          payment_status: "pending",
+          shipping_address: {
+            name: contactData.name,
+            phone: contactData.phone,
+            email: contactData.email,
+            city: addressData.city,
+            street: addressData.street,
+            house: addressData.house,
+            apartment: addressData.apartment,
+            comment: addressData.comment,
+            delivery: delivery
+          },
+          notes: addressData.comment
+        })
+        .select()
+        .single();
+      
+      if (orderError) throw orderError;
+      
+      // Create order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        product_id: item.productId,
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems);
+      
+      if (itemsError) throw itemsError;
+      
+      clearCart();
+      
+      toast({
+        title: "Заказ оформлен!",
+        description: `Номер заказа: #${order.id.slice(0, 8).toUpperCase()}. Мы отправим подтверждение на вашу почту.`,
+      });
+      
+      navigate("/account/orders");
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось оформить заказ. Попробуйте позже.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isContactValid = contactData.name && contactData.phone && contactData.email;
   const isAddressValid = addressData.city && addressData.street && addressData.house;
+
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-12 pb-24 lg:pb-12">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <ShoppingBag className="h-24 w-24 text-muted-foreground/30 mb-6" />
+            <h1 className="text-2xl font-bold mb-2">Корзина пуста</h1>
+            <p className="text-muted-foreground mb-6">
+              Добавьте товары, чтобы оформить заказ
+            </p>
+            <Button asChild>
+              <Link to="/catalog">Перейти к покупкам</Link>
+            </Button>
+          </div>
+        </main>
+        <Footer />
+        <MobileNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -359,9 +440,13 @@ const Checkout = () => {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="space-y-3 mb-4">
-                      {orderItems.map((item, index) => (
-                        <div key={index} className="flex gap-3">
-                          <div className="w-12 h-12 rounded-lg bg-muted flex-shrink-0" />
+                      {items.map((item) => (
+                        <div key={item.id} className="flex gap-3">
+                          <img 
+                            src={item.image || "/placeholder.svg"}
+                            alt={item.name}
+                            className="w-12 h-12 rounded-lg bg-muted flex-shrink-0 object-cover"
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm line-clamp-2">{item.name}</p>
                             <p className="text-xs text-muted-foreground">×{item.quantity}</p>
@@ -377,7 +462,7 @@ const Checkout = () => {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Товары</span>
+                    <span className="text-muted-foreground">Товары ({items.length})</span>
                     <span>{subtotal.toLocaleString()} ₽</span>
                   </div>
                   <div className="flex justify-between">
@@ -397,9 +482,9 @@ const Checkout = () => {
                   className="w-full" 
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={step < 3}
+                  disabled={step < 3 || isSubmitting}
                 >
-                  Оплатить {total.toLocaleString()} ₽
+                  {isSubmitting ? "Оформление..." : `Оплатить ${total.toLocaleString()} ₽`}
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center mt-4">

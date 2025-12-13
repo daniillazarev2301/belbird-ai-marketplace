@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useCart } from "@/contexts/CartContext";
 
 interface Product {
   id: string;
@@ -48,6 +49,7 @@ interface Category {
 const Catalog = () => {
   const { category } = useParams();
   const { toast } = useToast();
+  const { addItem } = useCart();
   
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState([0, 50000]);
@@ -151,6 +153,15 @@ const Catalog = () => {
   };
 
   const addToCart = (product: Product) => {
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      oldPrice: product.old_price,
+      quantity: 1,
+      image: product.images?.[0] || "/placeholder.svg",
+      slug: product.slug,
+    });
     toast({
       title: "Добавлено в корзину",
       description: product.name
