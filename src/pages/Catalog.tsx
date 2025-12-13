@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Star, Heart, ShoppingCart, Folder } from "lucide-react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { Star, Heart, ShoppingCart, Folder, ChevronLeft, ChevronRight } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -14,6 +14,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/contexts/CartContext";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
 import { HorizontalFilters } from "@/components/catalog/HorizontalFilters";
+
+const PRODUCTS_PER_PAGE = 20;
 
 interface Product {
   id: string;
@@ -51,8 +53,11 @@ interface SpecificationFilter {
 
 const Catalog = () => {
   const { category } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { addItem } = useCart();
+  
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
   
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState([0, 50000]);
@@ -60,6 +65,17 @@ const Catalog = () => {
   const [selectedSpecifications, setSelectedSpecifications] = useState<Record<string, string[]>>({});
   const [sortBy, setSortBy] = useState("popular");
   const [favorites, setFavorites] = useState<string[]>([]);
+
+  const setCurrentPage = (page: number) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (page === 1) {
+      newParams.delete("page");
+    } else {
+      newParams.set("page", page.toString());
+    }
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Fetch all categories for sidebar
   const { data: categories = [] } = useQuery({
@@ -189,6 +205,20 @@ const Catalog = () => {
     });
   }, [products, priceRange, selectedBrands, selectedSpecifications]);
 
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = () => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
   const toggleBrand = (brand: string) => {
     setSelectedBrands(prev => 
       prev.includes(brand) 
@@ -235,6 +265,7 @@ const Catalog = () => {
     setPriceRange([0, 50000]);
     setSelectedBrands([]);
     setSelectedSpecifications({});
+    setCurrentPage(1);
   };
 
   const activeFiltersCount = 
@@ -337,12 +368,12 @@ const Catalog = () => {
                     </Card>
                   ))}
                 </div>
-              ) : filteredProducts.length > 0 ? (
+              ) : paginatedProducts.length > 0 ? (
                 <div className={viewMode === "grid" 
                   ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4" 
                   : "space-y-3"
                 }>
-                  {filteredProducts.map((product, index) => (
+                  {paginatedProducts.map((product, index) => (
                     <Card 
                       key={product.id} 
                       className="group cursor-pointer hover:shadow-lg transition-all duration-300 animate-fade-in overflow-hidden"
@@ -426,6 +457,88 @@ const Catalog = () => {
                   <p className="text-muted-foreground mb-4">Товары не найдены</p>
                   <Button variant="outline" onClick={clearFilters}>
                     Сбросить фильтры
+                  </Button>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && paginatedProducts.length > 0 && (
+                <div className="flex items-center justify-center gap-2 pt-8 pb-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex items-center gap-1">
+                    {/* First page */}
+                    {currentPage > 3 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => setCurrentPage(1)}
+                        >
+                          1
+                        </Button>
+                        {currentPage > 4 && (
+                          <span className="px-1 text-muted-foreground">...</span>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Page numbers around current */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => 
+                        page >= currentPage - 2 && 
+                        page <= currentPage + 2 &&
+                        page >= 1 &&
+                        page <= totalPages
+                      )
+                      .map(page => (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "ghost"}
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))
+                    }
+                    
+                    {/* Last page */}
+                    {currentPage < totalPages - 2 && (
+                      <>
+                        {currentPage < totalPages - 3 && (
+                          <span className="px-1 text-muted-foreground">...</span>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => setCurrentPage(totalPages)}
+                        >
+                          {totalPages}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               )}
