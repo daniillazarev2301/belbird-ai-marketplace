@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MessageCircle, X, Send, Sparkles, User, Bot } from "lucide-react";
+import { X, Send, Sparkles, User, Bot, Mic, MicOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   role: "user" | "assistant";
@@ -37,13 +38,10 @@ const TypingIndicator = () => (
 
 // Format message content with markdown-like styling
 const FormattedMessage = ({ content }: { content: string }) => {
-  // Split by code blocks, lists, and headers
   const formatContent = (text: string) => {
-    // Simple formatting for common patterns
     const lines = text.split('\n');
     
     return lines.map((line, i) => {
-      // Headers
       if (line.startsWith('### ')) {
         return <p key={i} className="font-semibold text-sm mt-2 mb-1">{line.slice(4)}</p>;
       }
@@ -51,7 +49,6 @@ const FormattedMessage = ({ content }: { content: string }) => {
         return <p key={i} className="font-semibold mt-2 mb-1">{line.slice(3)}</p>;
       }
       
-      // List items
       if (line.match(/^[-•*]\s/)) {
         return (
           <div key={i} className="flex gap-2 ml-1">
@@ -61,7 +58,6 @@ const FormattedMessage = ({ content }: { content: string }) => {
         );
       }
       
-      // Numbered lists
       if (line.match(/^\d+\.\s/)) {
         const num = line.match(/^(\d+)\./)?.[1];
         return (
@@ -72,19 +68,15 @@ const FormattedMessage = ({ content }: { content: string }) => {
         );
       }
       
-      // Empty lines
       if (!line.trim()) {
         return <div key={i} className="h-2" />;
       }
       
-      // Regular text
       return <p key={i}>{formatInlineText(line)}</p>;
     });
   };
   
-  // Handle bold and inline formatting
   const formatInlineText = (text: string) => {
-    // Bold text **text** or __text__
     const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
     
     return parts.map((part, i) => {
@@ -101,20 +93,47 @@ const FormattedMessage = ({ content }: { content: string }) => {
   return <div className="space-y-0.5">{formatContent(content)}</div>;
 };
 
+const CHAT_STORAGE_KEY = "belbird_ai_chat_history";
+
 const AIChatWidget = () => {
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   const quickActions = [
     { icon: "🐾", text: "Корм для питомца" },
     { icon: "💡", text: "Рекомендации по уходу" },
     { icon: "🔥", text: "Что в тренде?" },
   ];
+
+  // Load chat history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse chat history:", e);
+      }
+    }
+  }, []);
+
+  // Save chat history to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
 
   useEffect(() => {
     const loadPetProfiles = async () => {
@@ -140,6 +159,69 @@ const AIChatWidget = () => {
       }
     }
   }, [messages, isTyping]);
+
+  // Voice recording setup
+  const startRecording = useCallback(() => {
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+      toast({
+        title: "Не поддерживается",
+        description: "Голосовой ввод не поддерживается вашим браузером",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
+    recognition.lang = "ru-RU";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const current = event.resultIndex;
+      const text = event.results[current][0].transcript;
+      setInput(text);
+
+      if (event.results[current].isFinal) {
+        setIsRecording(false);
+        if (text.trim()) {
+          streamChat(text.trim());
+          setInput("");
+        }
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setIsRecording(false);
+      if (event.error === "not-allowed") {
+        toast({
+          title: "Доступ запрещён",
+          description: "Разрешите доступ к микрофону",
+          variant: "destructive",
+        });
+      }
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.start();
+  }, [toast]);
+
+  const stopRecording = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
 
   const streamChat = useCallback(async (userMessage: string) => {
     const newMessages: Message[] = [...messages, { role: "user", content: userMessage }];
@@ -243,6 +325,15 @@ const AIChatWidget = () => {
     setInput("");
   };
 
+  const clearHistory = () => {
+    setMessages([]);
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+    toast({
+      title: "История очищена",
+      description: "Чат начат заново",
+    });
+  };
+
   return (
     <>
       {/* Chat Button */}
@@ -284,6 +375,8 @@ const AIChatWidget = () => {
               <p className="text-xs text-muted-foreground">
                 {isTyping ? (
                   <span className="text-primary">Печатает...</span>
+                ) : isRecording ? (
+                  <span className="text-red-500">🎙️ Запись...</span>
                 ) : petProfiles.length > 0 ? (
                   `Знаю ваших питомцев 🐾`
                 ) : (
@@ -295,9 +388,22 @@ const AIChatWidget = () => {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="rounded-full hover:bg-background/80">
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={clearHistory} 
+                className="rounded-full hover:bg-background/80 h-8 w-8"
+                title="Очистить историю"
+              >
+                <Trash2 className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="rounded-full hover:bg-background/80">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -407,18 +513,31 @@ const AIChatWidget = () => {
         {/* Input */}
         <div className="p-4 border-t border-border/50 bg-muted/30">
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={isRecording ? "destructive" : "outline"}
+              size="icon"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading}
+              className={cn(
+                "rounded-full h-10 w-10 flex-shrink-0 transition-all",
+                isRecording && "animate-pulse"
+              )}
+            >
+              {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Спросите о товарах..."
-              disabled={isLoading}
+              placeholder={isRecording ? "Говорите..." : "Спросите о товарах..."}
+              disabled={isLoading || isRecording}
               className="flex-1 bg-background border-border/50 rounded-full px-4 focus-visible:ring-primary/50"
             />
             <Button 
               onClick={handleSend} 
               size="icon" 
-              disabled={isLoading || !input.trim()}
+              disabled={isLoading || !input.trim() || isRecording}
               className="rounded-full h-10 w-10 bg-primary hover:bg-primary/90 shadow-sm transition-all hover:scale-105"
             >
               <Send className="h-4 w-4" />

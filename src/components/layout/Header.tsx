@@ -151,33 +151,35 @@ const Header = () => {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Найти товары, бренды..."
+              placeholder="Найти товары..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setShowResults(true);
               }}
-              className="w-full pl-10 pr-10 h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary"
+              className="w-full pl-10 pr-20 h-10 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary text-sm"
               onFocus={() => {
                 setIsSearchFocused(true);
                 setShowResults(true);
               }}
               onBlur={() => setIsSearchFocused(false)}
             />
-            <button 
-              type="button" 
-              className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-              onClick={() => setIsVisualSearchOpen(true)}
-            >
-              <Camera className="h-4 w-4" />
-            </button>
-            <button 
-              type="button" 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-              onClick={() => setIsVoiceSearchOpen(true)}
-            >
-              <Mic className="h-4 w-4" />
-            </button>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button 
+                type="button" 
+                className="p-1.5 rounded-full text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                onClick={() => setIsVisualSearchOpen(true)}
+              >
+                <Camera className="h-4 w-4" />
+              </button>
+              <button 
+                type="button" 
+                className="p-1.5 rounded-full text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                onClick={() => setIsVoiceSearchOpen(true)}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            </div>
           </form>
           {showResults && searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-50 overflow-hidden">
