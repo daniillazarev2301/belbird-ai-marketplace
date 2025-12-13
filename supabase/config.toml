@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.alfa-bank-payment]
 verify_jwt = false
+
+[functions.delivery-calculate]
+verify_jwt = false

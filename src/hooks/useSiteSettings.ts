@@ -37,6 +37,21 @@ export interface DeliverySettings {
   delivery_regions: string[];
 }
 
+export interface DeliveryProvidersSettings {
+  cdek_enabled: boolean;
+  cdek_account: string;
+  cdek_password: string;
+  cdek_test_mode: boolean;
+  boxberry_enabled: boolean;
+  boxberry_token: string;
+  boxberry_test_mode: boolean;
+  russian_post_enabled: boolean;
+  russian_post_token: string;
+  russian_post_login: string;
+  russian_post_password: string;
+  russian_post_test_mode: boolean;
+}
+
 export interface PaymentSettings {
   methods: string[];
   installment_available: boolean;
@@ -53,7 +68,7 @@ export interface FeatureSettings {
   enable_chat: boolean;
 }
 
-export type SettingsKey = 'general' | 'contacts' | 'social' | 'seo' | 'delivery' | 'payment' | 'features';
+export type SettingsKey = 'general' | 'contacts' | 'social' | 'seo' | 'delivery' | 'delivery_providers' | 'payment' | 'features';
 
 export function useSiteSettings() {
   const queryClient = useQueryClient();
@@ -78,6 +93,7 @@ export function useSiteSettings() {
         social: SocialSettings;
         seo: SeoSettings;
         delivery: DeliverySettings;
+        delivery_providers: DeliveryProvidersSettings;
         payment: PaymentSettings;
         features: FeatureSettings;
       };
