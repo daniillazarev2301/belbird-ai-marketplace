@@ -37,6 +37,7 @@ import {
   Star,
   Flame,
   Bot,
+  Plus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -56,6 +57,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableMediaItem } from "@/components/admin/SortableMediaItem";
+import { CreateBrandDialog } from "@/components/admin/CreateBrandDialog";
 import { compressMultipleImages, formatFileSize, MEDIA_REQUIREMENTS, validateMediaFile, validateImageDimensions, isVideoFile, countMediaTypes } from "@/utils/imageCompression";
 
 interface ProductFormData {
@@ -93,6 +95,7 @@ const AdminProductEdit = () => {
   const [generatingSEO, setGeneratingSEO] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
+  const [createBrandOpen, setCreateBrandOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("main");
 
   const sensors = useSensors(
@@ -823,7 +826,18 @@ const AdminProductEdit = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Бренд</Label>
+                        <div className="flex items-center justify-between">
+                          <Label>Бренд</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCreateBrandOpen(true)}
+                            className="h-6 text-xs gap-1"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Создать
+                          </Button>
+                        </div>
                         <Select
                           value={formData.brand_id}
                           onValueChange={(value) => setFormData(prev => ({ ...prev, brand_id: value }))}
@@ -971,6 +985,16 @@ const AdminProductEdit = () => {
             {isNew ? "Создать и завершить" : "Сохранить изменения"}
           </Button>
         </div>
+
+        {/* Create Brand Dialog */}
+        <CreateBrandDialog
+          open={createBrandOpen}
+          onOpenChange={setCreateBrandOpen}
+          onBrandCreated={(newBrand) => {
+            setBrands(prev => [...prev, newBrand].sort((a, b) => a.name.localeCompare(b.name)));
+            setFormData(prev => ({ ...prev, brand_id: newBrand.id }));
+          }}
+        />
       </AdminLayout>
     </>
   );
