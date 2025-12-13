@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 
 interface ReviewFormProps {
   productId: string;
-  onSuccess: () => void;
-  onCancel: () => void;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export const ReviewForm = ({ productId, onSuccess, onCancel }: ReviewFormProps) => {

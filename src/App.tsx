@@ -27,6 +27,10 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminPages from "./pages/admin/AdminPages";
 import AdminPromoCodes from "./pages/admin/AdminPromoCodes";
 import AdminSiteSettings from "./pages/admin/AdminSiteSettings";
+import AdminReviews from "./pages/admin/AdminReviews";
+import AdminBlog from "./pages/admin/AdminBlog";
+import AdminDelivery from "./pages/admin/AdminDelivery";
+import Compare from "./pages/Compare";
 import AccountProfile from "./pages/account/AccountProfile";
 import AccountOrders from "./pages/account/AccountOrders";
 import AccountPets from "./pages/account/AccountPets";
@@ -54,6 +58,7 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/product/:id" element={<Product />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/compare" element={<Compare />} />
               
               {/* Static Pages */}
               <Route path="/about" element={<StaticPage />} />
@@ -88,6 +93,9 @@ const App = () => (
               <Route path="/admin/orders" element={<AdminOrders />} />
               <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
               <Route path="/admin/customers" element={<AdminCustomers />} />
+              <Route path="/admin/reviews" element={<AdminReviews />} />
+              <Route path="/admin/blog" element={<AdminBlog />} />
+              <Route path="/admin/delivery" element={<AdminDelivery />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/site-settings" element={<AdminSiteSettings />} />
               
