@@ -13,9 +13,11 @@ const FeaturedProducts = () => {
         .from("products")
         .select(`
           id, name, slug, price, old_price, images, rating, review_count,
+          is_bestseller, is_new, is_ai_recommended,
           category:categories(name)
         `)
         .eq("is_active", true)
+        .or("is_bestseller.eq.true,is_new.eq.true,is_ai_recommended.eq.true")
         .order("review_count", { ascending: false })
         .limit(8);
 
@@ -31,7 +33,9 @@ const FeaturedProducts = () => {
         reviewCount: p.review_count || 0,
         category: p.category?.name || "",
         slug: p.slug,
-        isBestseller: (p.review_count || 0) > 100,
+        isBestseller: p.is_bestseller || false,
+        isNew: p.is_new || false,
+        aiRecommended: p.is_ai_recommended || false,
       }));
     },
   });

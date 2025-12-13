@@ -38,6 +38,9 @@ interface ProductFormData {
   category_id: string;
   brand_id: string;
   is_active: boolean;
+  is_bestseller: boolean;
+  is_new: boolean;
+  is_ai_recommended: boolean;
   features: string[];
   images: string[];
 }
@@ -66,6 +69,9 @@ const AdminProductEdit = () => {
     category_id: "",
     brand_id: "",
     is_active: true,
+    is_bestseller: false,
+    is_new: false,
+    is_ai_recommended: false,
     features: [],
     images: [],
   });
@@ -111,6 +117,9 @@ const AdminProductEdit = () => {
           category_id: data.category_id || "",
           brand_id: data.brand_id || "",
           is_active: data.is_active ?? true,
+          is_bestseller: data.is_bestseller ?? false,
+          is_new: data.is_new ?? false,
+          is_ai_recommended: data.is_ai_recommended ?? false,
           features: data.features || [],
           images: data.images || [],
         });
@@ -238,6 +247,9 @@ const AdminProductEdit = () => {
         category_id: formData.category_id || null,
         brand_id: formData.brand_id || null,
         is_active: formData.is_active,
+        is_bestseller: formData.is_bestseller,
+        is_new: formData.is_new,
+        is_ai_recommended: formData.is_ai_recommended,
         features: featuresText ? featuresText.split('\n').filter(Boolean) : [],
         images: formData.images,
       };
@@ -431,14 +443,35 @@ const AdminProductEdit = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Статус</CardTitle>
+                <CardTitle className="text-base">Статус и метки</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label>Активен</Label>
                   <Switch
                     checked={formData.is_active}
                     onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Хит продаж</Label>
+                  <Switch
+                    checked={formData.is_bestseller}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_bestseller: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Новинка</Label>
+                  <Switch
+                    checked={formData.is_new}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_new: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>AI рекомендация</Label>
+                  <Switch
+                    checked={formData.is_ai_recommended}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_ai_recommended: checked }))}
                   />
                 </div>
               </CardContent>

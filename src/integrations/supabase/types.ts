@@ -304,6 +304,9 @@ export type Database = {
           id: string
           images: string[] | null
           is_active: boolean | null
+          is_ai_recommended: boolean | null
+          is_bestseller: boolean | null
+          is_new: boolean | null
           name: string
           old_price: number | null
           price: number
@@ -323,6 +326,9 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          is_ai_recommended?: boolean | null
+          is_bestseller?: boolean | null
+          is_new?: boolean | null
           name: string
           old_price?: number | null
           price: number
@@ -342,6 +348,9 @@ export type Database = {
           id?: string
           images?: string[] | null
           is_active?: boolean | null
+          is_ai_recommended?: boolean | null
+          is_bestseller?: boolean | null
+          is_new?: boolean | null
           name?: string
           old_price?: number | null
           price?: number
