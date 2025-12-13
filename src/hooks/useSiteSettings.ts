@@ -70,7 +70,7 @@ export interface FeatureSettings {
 
 export interface PromoCard {
   id: string;
-  type: "main" | "flash_sale" | "subscription";
+  type: "main" | "flash_sale" | "subscription" | "custom";
   title: string;
   description: string;
   badge?: string;
