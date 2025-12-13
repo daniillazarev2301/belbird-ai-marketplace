@@ -46,6 +46,7 @@ const AdminDelivery = lazy(() => import("./pages/admin/AdminDelivery"));
 const AdminBrands = lazy(() => import("./pages/admin/AdminBrands"));
 const AdminStories = lazy(() => import("./pages/admin/AdminStories"));
 const AdminABTests = lazy(() => import("./pages/admin/AdminABTests"));
+const AdminPushNotifications = lazy(() => import("./pages/admin/AdminPushNotifications"));
 
 // Account pages
 const AccountProfile = lazy(() => import("./pages/account/AccountProfile"));
@@ -128,6 +129,7 @@ const App = () => (
                 <Route path="/admin/delivery" element={<AdminDelivery />} />
                 <Route path="/admin/stories" element={<AdminStories />} />
                 <Route path="/admin/ab-tests" element={<AdminABTests />} />
+                <Route path="/admin/push-notifications" element={<AdminPushNotifications />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 <Route path="/admin/site-settings" element={<AdminSiteSettings />} />
                 
