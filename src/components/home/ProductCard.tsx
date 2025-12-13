@@ -1,5 +1,5 @@
-import { Heart, Star, ShoppingCart, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Heart, Star, ShoppingCart, Sparkles, Play } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ export interface Product {
   price: number;
   oldPrice?: number;
   image: string;
+  images?: string[];
   rating: number;
   reviewCount: number;
   category: string;
@@ -27,12 +28,37 @@ interface ProductCardProps {
   variant?: "default" | "compact";
 }
 
+const isVideo = (url: string) => {
+  const lower = url.toLowerCase();
+  return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.gif') || lower.includes('video');
+};
+
 const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { addItem } = useCart();
+  
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
+
+  // Find first video in images array
+  const allMedia = product.images || [product.image];
+  const videoUrl = allMedia.find(url => isVideo(url));
+  const imageUrl = allMedia.find(url => !isVideo(url)) || product.image;
+  const displayMedia = videoUrl || imageUrl;
+
+  useEffect(() => {
+    if (videoRef.current && videoUrl) {
+      if (isHovered) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
+    }
+  }, [isHovered, videoUrl]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,7 +68,7 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
       price: product.price,
       oldPrice: product.oldPrice,
       quantity: 1,
-      image: product.image,
+      image: imageUrl,
       slug: product.slug || product.id,
     });
     toast({
@@ -61,14 +87,39 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
   };
 
   return (
-    <article className="group relative bg-card rounded-xl overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300">
-      {/* Image Container */}
+    <article 
+      className="group relative bg-card rounded-xl overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Image/Video Container */}
       <Link to={`/product/${product.slug || product.id}`} className="block relative aspect-square overflow-hidden">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {videoUrl ? (
+          <>
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className="w-full h-full object-cover"
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+            {!isHovered && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                <div className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                  <Play className="h-4 w-4 fill-current" />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <img
+            src={imageUrl}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        )}
         
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -84,8 +135,8 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
             </Badge>
           )}
           {product.isBestseller && (
-            <Badge variant="outline" className="bg-background/80 backdrop-blur-sm">
-              Хит
+            <Badge variant="outline" className="bg-background/80 backdrop-blur-sm border-orange-500 text-orange-600">
+              🔥 Хит
             </Badge>
           )}
           {discount > 0 && (
