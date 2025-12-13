@@ -15,6 +15,7 @@ export interface Product {
   rating: number;
   reviewCount: number;
   category: string;
+  slug?: string;
   isNew?: boolean;
   isBestseller?: boolean;
   aiRecommended?: boolean;
@@ -51,7 +52,7 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
   return (
     <article className="group relative bg-card rounded-xl overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300">
       {/* Image Container */}
-      <Link to={`/product/${product.id}`} className="block relative aspect-square overflow-hidden">
+      <Link to={`/product/${product.slug || product.id}`} className="block relative aspect-square overflow-hidden">
         <img
           src={product.image}
           alt={product.name}
@@ -103,7 +104,7 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
         <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
 
         {/* Name */}
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${product.slug || product.id}`}>
           <h3 className="font-medium text-sm md:text-base line-clamp-2 mb-2 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
