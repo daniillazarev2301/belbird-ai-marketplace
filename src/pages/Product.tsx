@@ -428,8 +428,8 @@ const Product = () => {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid lg:grid-cols-12 gap-8">
+        <div className="container mx-auto px-4 py-4 lg:py-6 pb-32 lg:pb-6">
+          <div className="grid lg:grid-cols-12 gap-4 lg:gap-6">
             {/* Left: Thumbnails */}
             <div className="hidden lg:flex lg:col-span-1 flex-col gap-3">
               {images.map((img, index) => (
@@ -445,7 +445,7 @@ const Product = () => {
             </div>
 
             {/* Center: Main Image / 3D Viewer */}
-            <div className="lg:col-span-6">
+            <div className="lg:col-span-5">
               <div className="relative aspect-square rounded-2xl overflow-hidden sticky top-4 border bg-muted">
                 {show3DViewer && product.model_3d_url ? (
                   <Product3DViewer modelUrl={product.model_3d_url} productName={product.name} />
@@ -683,80 +683,74 @@ const Product = () => {
               </div>
             </div>
 
-            {/* Right: Buy Card (Sticky) */}
-            <div className="lg:col-span-2">
+            {/* Right: Buy Card (Sticky) - Desktop Only */}
+            <div className="hidden lg:block lg:col-span-3">
               <Card className="sticky top-4 shadow-lg border overflow-hidden">
-                <CardContent className="p-4 space-y-4">
+                <CardContent className="p-5 space-y-4">
+                  {/* Stock Badge */}
+                  {product.stock_count > 0 && product.stock_count < 10 && (
+                    <Badge variant="destructive" className="mb-2">
+                      Осталось {product.stock_count} шт
+                    </Badge>
+                  )}
+
                   {/* Price Section */}
                   <div className="space-y-1">
-                    <span className="text-2xl font-bold text-primary">
-                      {product.price.toLocaleString()} ₽
-                    </span>
-                    {product.old_price && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground line-through">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold text-primary">
+                        {product.price.toLocaleString()} ₽
+                      </span>
+                      {product.old_price && (
+                        <span className="text-base text-muted-foreground line-through">
                           {product.old_price.toLocaleString()} ₽
                         </span>
-                        <Badge variant="destructive" className="text-xs">
-                          -{discount}%
-                        </Badge>
-                      </div>
+                      )}
+                    </div>
+                    {discount > 0 && (
+                      <Badge variant="destructive" className="text-xs">
+                        -{discount}%
+                      </Badge>
                     )}
                   </div>
 
-                  {/* Quantity Selector */}
-                  <div className="flex items-center justify-between py-2 border-y">
-                    <span className="text-sm">Количество:</span>
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        disabled={quantity <= 1}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center font-medium">{quantity}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => setQuantity(quantity + 1)}
-                        disabled={product.stock_count !== null && quantity >= product.stock_count}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
                   {/* Action Buttons */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Button 
-                      className="w-full h-11" 
+                      className="w-full h-12 text-base font-medium" 
                       onClick={addToCart} 
                       disabled={product.stock_count === 0}
                     >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      В корзину
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      Добавить в корзину
                     </Button>
                     
                     <Button 
                       variant="outline" 
-                      className="w-full h-11"
+                      className="w-full h-12 text-base font-medium"
                     >
                       Купить сейчас
                     </Button>
                   </div>
 
+                  {/* Delivery Info */}
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg text-sm">
+                    <Truck className="h-5 w-5 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">
+                        {product.stock_count > 0 ? "17 декабря" : "3-5 дней"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {product.stock_count > 0 ? "склад продавца" : "Под заказ"}
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Subscription Button */}
                   <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
                     <DialogTrigger asChild>
-                      <button className="w-full flex items-center justify-between p-3 rounded-lg border border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-sm">
-                        <div className="flex items-center gap-2">
-                          <RefreshCw className="h-4 w-4 text-primary" />
-                          <span>Подписка</span>
-                        </div>
+                      <button className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 transition-colors text-sm">
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                        <span>Оформить подписку</span>
                         <Badge className="bg-primary/10 text-primary border-0 text-xs">-10%</Badge>
                       </button>
                     </DialogTrigger>
@@ -822,26 +816,37 @@ const Product = () => {
                       </div>
                     </DialogContent>
                   </Dialog>
-
-                  {/* Delivery Info */}
-                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg text-sm">
-                    <Truck className="h-5 w-5 text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">
-                        {product.stock_count > 0 ? "Завтра" : "3-5 дней"}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {product.stock_count > 0 ? "Со склада" : "Под заказ"}
-                      </p>
-                    </div>
-                    {product.stock_count > 0 && product.stock_count < 10 && (
-                      <Badge variant="outline" className="ml-auto text-xs shrink-0 whitespace-nowrap">
-                        {product.stock_count} шт
-                      </Badge>
-                    )}
-                  </div>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+
+          {/* Mobile Fixed Bottom Bar */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50 p-4 safe-area-inset-bottom">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-bold text-primary">
+                    {product.price.toLocaleString()} ₽
+                  </span>
+                  {product.old_price && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      {product.old_price.toLocaleString()} ₽
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {product.stock_count > 0 ? "Завтра" : "3-5 дней"}
+                </p>
+              </div>
+              <Button 
+                className="h-12 px-6 text-base font-medium" 
+                onClick={addToCart} 
+                disabled={product.stock_count === 0}
+              >
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                В корзину
+              </Button>
             </div>
           </div>
 
