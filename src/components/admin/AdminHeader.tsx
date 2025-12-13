@@ -1,27 +1,13 @@
-import { Bell, Search, Menu } from "lucide-react";
+import { Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AdminNotifications } from "./AdminNotifications";
 
 interface AdminHeaderProps {
   title: string;
   description?: string;
 }
-
-const notifications = [
-  { id: 1, title: "Низкий остаток", message: "Корм Royal Canin - осталось 5 шт", type: "warning" },
-  { id: 2, title: "Новый заказ", message: "Заказ #12345 ожидает обработки", type: "info" },
-  { id: 3, title: "Возврат", message: "Запрос на возврат #5678", type: "error" },
-];
 
 const AdminHeader = ({ title, description }: AdminHeaderProps) => {
   return (
@@ -48,37 +34,8 @@ const AdminHeader = ({ title, description }: AdminHeaderProps) => {
           />
         </div>
 
-        {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-destructive text-destructive-foreground">
-                3
-              </Badge>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Уведомления</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.map((notification) => (
-              <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    notification.type === 'warning' ? 'bg-secondary' :
-                    notification.type === 'error' ? 'bg-destructive' : 'bg-primary'
-                  }`} />
-                  <span className="font-medium text-sm">{notification.title}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">{notification.message}</span>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-primary">
-              Все уведомления
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Notifications - Real data from database */}
+        <AdminNotifications />
 
         {/* Back to Store */}
         <Button variant="outline" size="sm" asChild className="hidden sm:flex">
