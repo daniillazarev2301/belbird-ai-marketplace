@@ -1,36 +1,8 @@
-import { ArrowRight, Sparkles, PawPrint, Bird, Fish, Rabbit } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-main.jpg";
 import { useEffect, useState } from "react";
-
-const FloatingAnimal = ({ 
-  icon: Icon, 
-  delay, 
-  left, 
-  duration, 
-  size,
-  animationType 
-}: { 
-  icon: React.ElementType;
-  delay: number; 
-  left: number; 
-  duration: number;
-  size: number;
-  animationType: 'float' | 'fly' | 'swim' | 'hop';
-}) => (
-  <div
-    className={`absolute text-primary/30 pointer-events-none animate-${animationType}`}
-    style={{
-      left: `${left}%`,
-      bottom: animationType === 'fly' ? '70%' : animationType === 'swim' ? '20%' : '-20px',
-      animationDelay: `${delay}s`,
-      animationDuration: `${duration}s`,
-    }}
-  >
-    <Icon size={size} />
-  </div>
-);
 
 const HeroSection = () => {
   const [scrollY, setScrollY] = useState(0);
@@ -46,42 +18,63 @@ const HeroSection = () => {
     if (chatButton) chatButton.click();
   };
 
-  const animals = [
-    { icon: PawPrint, delay: 0, left: 5, duration: 10, size: 24, animationType: 'float' as const },
-    { icon: Bird, delay: 1, left: 75, duration: 8, size: 28, animationType: 'fly' as const },
-    { icon: PawPrint, delay: 2, left: 20, duration: 12, size: 20, animationType: 'float' as const },
-    { icon: Fish, delay: 0.5, left: 85, duration: 6, size: 22, animationType: 'swim' as const },
-    { icon: Bird, delay: 3, left: 60, duration: 9, size: 24, animationType: 'fly' as const },
-    { icon: Rabbit, delay: 1.5, left: 90, duration: 4, size: 26, animationType: 'hop' as const },
-    { icon: PawPrint, delay: 2.5, left: 35, duration: 11, size: 18, animationType: 'float' as const },
-    { icon: Fish, delay: 4, left: 70, duration: 7, size: 20, animationType: 'swim' as const },
-  ];
-
   return (
     <section className="relative overflow-hidden">
-      {/* Background Image with Parallax */}
+      {/* Background Image with Breathing Animation */}
       <div 
         className="absolute inset-0 transition-transform duration-100 ease-out"
-        style={{ transform: `translateY(${scrollY * 0.3}px) scale(1.1)` }}
+        style={{ transform: `translateY(${scrollY * 0.3}px)` }}
       >
-        <img
-          src={heroImage}
-          alt="Уютный дом с питомцем"
-          className="w-full h-full object-cover"
-        />
+        <div className="relative w-full h-full animate-breathing">
+          <img
+            src={heroImage}
+            alt="Питомцы - собака, кошка, попугай, кролик, цыплята"
+            className="w-full h-full object-cover"
+          />
+          {/* Shimmer overlay for "alive" effect */}
+          <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-transparent" />
       </div>
 
-      {/* Animated Animals */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {animals.map((animal, index) => (
-          <FloatingAnimal key={index} {...animal} />
-        ))}
+      {/* Glowing spots on animals positions */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Dog glow */}
+        <div 
+          className="absolute w-32 h-32 bg-primary/20 rounded-full blur-2xl animate-glow-pulse"
+          style={{ top: '35%', left: '55%' }}
+        />
+        {/* Cat glow */}
+        <div 
+          className="absolute w-24 h-24 bg-secondary/20 rounded-full blur-2xl animate-glow-pulse"
+          style={{ top: '40%', left: '62%', animationDelay: '0.5s' }}
+        />
+        {/* Parrot glow */}
+        <div 
+          className="absolute w-20 h-20 bg-destructive/15 rounded-full blur-2xl animate-glow-pulse"
+          style={{ top: '30%', left: '82%', animationDelay: '1s' }}
+        />
+        {/* Chicks glow */}
+        <div 
+          className="absolute w-40 h-20 bg-yellow-400/20 rounded-full blur-2xl animate-glow-pulse"
+          style={{ top: '65%', left: '58%', animationDelay: '0.3s' }}
+        />
       </div>
 
-      {/* Animated Glow Orbs */}
-      <div className="absolute top-20 right-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl animate-pulse pointer-events-none" />
-      <div className="absolute bottom-20 left-10 w-48 h-48 bg-secondary/10 rounded-full blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
+      {/* Sparkle particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(8)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-primary rounded-full animate-sparkle"
+            style={{
+              top: `${30 + Math.random() * 40}%`,
+              left: `${50 + Math.random() * 45}%`,
+              animationDelay: `${i * 0.4}s`,
+            }}
+          />
+        ))}
+      </div>
 
       {/* Content */}
       <div 
@@ -139,74 +132,63 @@ const HeroSection = () => {
         </div>
       </div>
 
-      {/* Custom Animations */}
+      {/* Animations */}
       <style>{`
-        @keyframes float {
+        @keyframes breathing {
           0%, 100% {
-            transform: translateY(0) rotate(0deg);
-            opacity: 0;
+            transform: scale(1);
           }
-          10% { opacity: 0.6; }
-          90% { opacity: 0.6; }
-          100% {
-            transform: translateY(-100vh) rotate(20deg);
-            opacity: 0;
+          50% {
+            transform: scale(1.02);
           }
         }
         
-        @keyframes fly {
+        @keyframes shimmer {
           0% {
-            transform: translateX(-50px) translateY(0);
-            opacity: 0;
+            transform: translateX(-100%);
           }
-          10% { opacity: 0.5; }
-          50% { transform: translateX(100px) translateY(-30px); }
-          90% { opacity: 0.5; }
           100% {
-            transform: translateX(200px) translateY(0);
-            opacity: 0;
+            transform: translateX(100%);
           }
         }
         
-        @keyframes swim {
-          0% {
-            transform: translateX(-30px) scaleX(1);
-            opacity: 0;
-          }
-          10% { opacity: 0.5; }
-          25% { transform: translateX(50px) translateY(-10px) scaleX(1); }
-          50% { transform: translateX(100px) translateY(5px) scaleX(-1); }
-          75% { transform: translateX(50px) translateY(-5px) scaleX(-1); }
-          90% { opacity: 0.5; }
-          100% {
-            transform: translateX(-30px) scaleX(1);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes hop {
+        @keyframes glow-pulse {
           0%, 100% {
-            transform: translateY(0) scale(1);
-            opacity: 0;
+            opacity: 0.3;
+            transform: scale(1);
           }
-          10% { opacity: 0.6; }
-          20% { transform: translateY(-40px) translateX(20px) scale(1.1); }
-          30% { transform: translateY(0) translateX(40px) scale(1); }
-          40% { transform: translateY(-30px) translateX(60px) scale(1.05); }
-          50% { transform: translateY(0) translateX(80px) scale(1); }
-          60% { transform: translateY(-50px) translateX(100px) scale(1.1); }
-          70% { transform: translateY(0) translateX(120px) scale(1); }
-          90% { opacity: 0.6; }
-          100% {
-            transform: translateY(-20px) translateX(150px);
-            opacity: 0;
+          50% {
+            opacity: 0.6;
+            transform: scale(1.2);
           }
         }
         
-        .animate-float { animation: float linear infinite; }
-        .animate-fly { animation: fly ease-in-out infinite; }
-        .animate-swim { animation: swim ease-in-out infinite; }
-        .animate-hop { animation: hop ease-in-out infinite; }
+        @keyframes sparkle {
+          0%, 100% {
+            opacity: 0;
+            transform: scale(0);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        .animate-breathing {
+          animation: breathing 4s ease-in-out infinite;
+        }
+        
+        .animate-shimmer {
+          animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        .animate-glow-pulse {
+          animation: glow-pulse 3s ease-in-out infinite;
+        }
+        
+        .animate-sparkle {
+          animation: sparkle 2s ease-in-out infinite;
+        }
       `}</style>
     </section>
   );
