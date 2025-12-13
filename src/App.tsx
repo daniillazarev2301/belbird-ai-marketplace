@@ -33,6 +33,8 @@ import AdminReviews from "./pages/admin/AdminReviews";
 import AdminBlog from "./pages/admin/AdminBlog";
 import AdminDelivery from "./pages/admin/AdminDelivery";
 import AdminBrands from "./pages/admin/AdminBrands";
+import AdminStories from "./pages/admin/AdminStories";
+import AdminABTests from "./pages/admin/AdminABTests";
 import Compare from "./pages/Compare";
 import PaymentResult from "./pages/PaymentResult";
 import AccountProfile from "./pages/account/AccountProfile";
@@ -105,6 +107,8 @@ const App = () => (
               <Route path="/admin/reviews" element={<AdminReviews />} />
               <Route path="/admin/blog" element={<AdminBlog />} />
               <Route path="/admin/delivery" element={<AdminDelivery />} />
+              <Route path="/admin/stories" element={<AdminStories />} />
+              <Route path="/admin/ab-tests" element={<AdminABTests />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
               <Route path="/admin/site-settings" element={<AdminSiteSettings />} />
               

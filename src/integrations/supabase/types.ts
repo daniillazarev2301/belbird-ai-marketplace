@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ab_experiments: {
+        Row: {
+          created_at: string
+          description: string | null
+          element_selector: string
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string
+          variant_a_content: string
+          variant_a_conversions: number | null
+          variant_a_views: number | null
+          variant_b_content: string
+          variant_b_conversions: number | null
+          variant_b_views: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          element_selector: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+          variant_a_content: string
+          variant_a_conversions?: number | null
+          variant_a_views?: number | null
+          variant_b_content: string
+          variant_b_conversions?: number | null
+          variant_b_views?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          element_selector?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+          variant_a_content?: string
+          variant_a_conversions?: number | null
+          variant_a_views?: number | null
+          variant_b_content?: string
+          variant_b_conversions?: number | null
+          variant_b_views?: number | null
+        }
+        Relationships: []
+      }
       admin_notifications: {
         Row: {
           created_at: string
@@ -258,6 +306,44 @@ export type Database = {
           },
         ]
       }
+      loyalty_transactions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string | null
+          points: number
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          points: number
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          points?: number
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -492,6 +578,7 @@ export type Database = {
           is_ai_recommended: boolean | null
           is_bestseller: boolean | null
           is_new: boolean | null
+          model_3d_url: string | null
           name: string
           old_price: number | null
           price: number
@@ -516,6 +603,7 @@ export type Database = {
           is_ai_recommended?: boolean | null
           is_bestseller?: boolean | null
           is_new?: boolean | null
+          model_3d_url?: string | null
           name: string
           old_price?: number | null
           price: number
@@ -540,6 +628,7 @@ export type Database = {
           is_ai_recommended?: boolean | null
           is_bestseller?: boolean | null
           is_new?: boolean | null
+          model_3d_url?: string | null
           name?: string
           old_price?: number | null
           price?: number
@@ -792,6 +881,107 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      stories: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          product_id: string | null
+          sort_order: number | null
+          thumbnail_url: string | null
+          title: string
+          video_url: string
+          views_count: number | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          product_id?: string | null
+          sort_order?: number | null
+          thumbnail_url?: string | null
+          title: string
+          video_url: string
+          views_count?: number | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          product_id?: string | null
+          sort_order?: number | null
+          thumbnail_url?: string | null
+          title?: string
+          video_url?: string
+          views_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          discount_percent: number | null
+          frequency_days: number
+          id: string
+          is_active: boolean | null
+          next_delivery_date: string
+          product_id: string | null
+          quantity: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_percent?: number | null
+          frequency_days?: number
+          id?: string
+          is_active?: boolean | null
+          next_delivery_date: string
+          product_id?: string | null
+          quantity?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_percent?: number | null
+          frequency_days?: number
+          id?: string
+          is_active?: boolean | null
+          next_delivery_date?: string
+          product_id?: string | null
+          quantity?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

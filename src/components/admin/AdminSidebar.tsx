@@ -14,7 +14,9 @@ import {
   Globe,
   MessageSquare,
   BookOpen,
-  Truck
+  Truck,
+  PlayCircle,
+  FlaskConical
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -54,6 +56,7 @@ const catalogItems = [
 const contentItems = [
   { title: "Страницы", url: "/admin/pages", icon: FileText },
   { title: "Блог", url: "/admin/blog", icon: BookOpen },
+  { title: "Сторис", url: "/admin/stories", icon: PlayCircle },
 ];
 
 const salesItems = [
@@ -66,6 +69,7 @@ const salesItems = [
 const settingsItems = [
   { title: "Настройки сайта", url: "/admin/site-settings", icon: Globe },
   { title: "Доставка", url: "/admin/delivery", icon: Truck },
+  { title: "A/B Тесты", url: "/admin/ab-tests", icon: FlaskConical },
   { title: "Роли и доступы", url: "/admin/settings", icon: Settings },
 ];
 
