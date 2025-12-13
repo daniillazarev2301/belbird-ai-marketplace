@@ -28,11 +28,13 @@ import {
   Eye,
   LogIn,
   LogOut,
-  Loader2
+  Loader2,
+  Download
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 interface ActivityLog {
   id: string;
@@ -145,6 +147,19 @@ const AdminActivityLog = () => {
     }
   };
 
+  const handleExportExcel = () => {
+    const exportData = filteredLogs.map(log => ({
+      "Дата": format(new Date(log.created_at), "dd.MM.yyyy HH:mm:ss"),
+      "Пользователь": log.profile?.full_name || log.profile?.email || "Неизвестный",
+      "Действие": actionLabels[log.action] || log.action,
+      "Объект": entityLabels[log.entity_type || ""] || log.entity_type || "",
+      "ID объекта": log.entity_id || "",
+      "Детали": log.details ? JSON.stringify(log.details) : "",
+      "IP адрес": log.ip_address || ""
+    }));
+    exportToExcel(exportData, "activity_log");
+  };
+
   return (
     <>
       <Helmet>
@@ -197,14 +212,20 @@ const AdminActivityLog = () => {
 
           {/* Activity List */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                История действий
-              </CardTitle>
-              <CardDescription>
-                Последние 100 действий администраторов
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  История действий
+                </CardTitle>
+                <CardDescription>
+                  Последние 100 действий администраторов
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={filteredLogs.length === 0}>
+                <Download className="h-4 w-4 mr-2" />
+                Excel
+              </Button>
             </CardHeader>
             <CardContent>
               {isLoading ? (

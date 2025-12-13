@@ -5,7 +5,7 @@ import RiskTrafficLight from "@/components/admin/dashboard/RiskTrafficLight";
 import SalesForecast from "@/components/admin/dashboard/SalesForecast";
 import RecentOrders from "@/components/admin/dashboard/RecentOrders";
 import TopProducts from "@/components/admin/dashboard/TopProducts";
-import { ShoppingCart, Users, Package, TrendingUp, Loader2 } from "lucide-react";
+import { ShoppingCart, Users, Package, TrendingUp, Loader2, DollarSign, Clock, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,9 +26,30 @@ const AdminDashboard = () => {
         .select("stock_count");
       const totalStock = stockData?.reduce((sum, p) => sum + (p.stock_count || 0), 0) || 0;
 
-      // Get categories count
-      const { count: categoriesCount } = await supabase
-        .from("categories")
+      // Get orders data
+      const { data: ordersData, count: ordersCount } = await supabase
+        .from("orders")
+        .select("total_amount, created_at", { count: "exact" });
+      
+      const totalRevenue = ordersData?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0;
+      
+      // Get today's orders
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const { count: todayOrdersCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", today.toISOString());
+      
+      // Get pending orders
+      const { count: pendingOrdersCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+
+      // Get customers count
+      const { count: customersCount } = await supabase
+        .from("profiles")
         .select("*", { count: "exact", head: true });
 
       // Get low stock products
@@ -47,7 +68,11 @@ const AdminDashboard = () => {
       return {
         productsCount: productsCount || 0,
         totalStock,
-        categoriesCount: categoriesCount || 0,
+        ordersCount: ordersCount || 0,
+        todayOrdersCount: todayOrdersCount || 0,
+        pendingOrdersCount: pendingOrdersCount || 0,
+        totalRevenue,
+        customersCount: customersCount || 0,
         lowStockCount: lowStockCount || 0,
         outOfStockCount: outOfStockCount || 0,
       };
@@ -80,32 +105,32 @@ const AdminDashboard = () => {
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <MetricCard
-            title="Активных товаров"
-            value={metrics?.productsCount.toLocaleString() || "0"}
-            change={0}
-            changeLabel="в каталоге"
-            icon={Package}
+            title="Выручка"
+            value={`${(metrics?.totalRevenue || 0).toLocaleString()} ₽`}
+            change={metrics?.todayOrdersCount || 0}
+            changeLabel="заказов сегодня"
+            icon={DollarSign}
           />
           <MetricCard
-            title="Общий остаток"
-            value={metrics?.totalStock.toLocaleString() || "0"}
-            change={0}
-            changeLabel="единиц товара"
+            title="Всего заказов"
+            value={metrics?.ordersCount.toString() || "0"}
+            change={metrics?.pendingOrdersCount || 0}
+            changeLabel="ожидают обработки"
             icon={ShoppingCart}
           />
           <MetricCard
-            title="Категорий"
-            value={metrics?.categoriesCount.toString() || "0"}
+            title="Клиентов"
+            value={metrics?.customersCount.toString() || "0"}
             change={0}
-            changeLabel="в структуре"
-            icon={TrendingUp}
+            changeLabel="зарегистрировано"
+            icon={Users}
           />
           <MetricCard
             title="Мало на складе"
             value={(metrics?.lowStockCount || 0).toString()}
             change={metrics?.outOfStockCount || 0}
             changeLabel="нет в наличии"
-            icon={Users}
+            icon={AlertTriangle}
           />
         </div>
 
