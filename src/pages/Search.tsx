@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Search as SearchIcon, Mic, MicOff, X, Sparkles, Clock, TrendingUp, Camera, Filter, ArrowRight } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Search as SearchIcon, Mic, MicOff, X, Sparkles, Clock, TrendingUp, Camera, Star, Heart, ShoppingCart } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -7,29 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SearchResult {
   id: string;
   name: string;
-  brand: string;
+  slug: string;
   price: number;
-  oldPrice?: number;
-  image: string;
+  old_price?: number;
+  images: string[];
   rating: number;
-  reviewCount: number;
-  category: string;
-}
-
-interface AISuggestion {
-  text: string;
-  type: "product" | "category" | "tip";
-  icon?: React.ReactNode;
+  review_count: number;
+  brand?: { name: string };
 }
 
 const recentSearches = [
@@ -47,70 +39,18 @@ const trendingSearches = [
   "наполнитель"
 ];
 
-const mockAISuggestions: AISuggestion[] = [
-  { text: "Корм для вашего питомца Барсика (персидская кошка, 3 года)", type: "tip", icon: <Sparkles className="h-4 w-4" /> },
-  { text: "Товары для ухода за длинной шерстью", type: "category" },
-  { text: "Royal Canin Persian Adult", type: "product" },
-  { text: "Витамины для кошек с чувствительным пищеварением", type: "tip" },
-];
-
-const mockResults: SearchResult[] = [
-  {
-    id: "1",
-    name: "Корм для кошек Royal Canin Persian Adult",
-    brand: "Royal Canin",
-    price: 3590,
-    oldPrice: 4200,
-    image: "/placeholder.svg",
-    rating: 4.8,
-    reviewCount: 234,
-    category: "Питомцы"
-  },
-  {
-    id: "2",
-    name: "Расчёска-фурминатор для длинношёрстных кошек",
-    brand: "FURminator",
-    price: 1890,
-    image: "/placeholder.svg",
-    rating: 4.9,
-    reviewCount: 567,
-    category: "Питомцы"
-  },
-  {
-    id: "3",
-    name: "Шампунь для персидских кошек с кондиционером",
-    brand: "Bio-Groom",
-    price: 890,
-    image: "/placeholder.svg",
-    rating: 4.6,
-    reviewCount: 89,
-    category: "Питомцы"
-  },
-  {
-    id: "4",
-    name: "Когтеточка-домик многоуровневая",
-    brand: "Trixie",
-    price: 5490,
-    oldPrice: 6500,
-    image: "/placeholder.svg",
-    rating: 4.7,
-    reviewCount: 156,
-    category: "Питомцы"
-  }
-];
-
 const Search = () => {
   const { toast } = useToast();
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") || "");
   const [isListening, setIsListening] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
@@ -143,6 +83,14 @@ const Search = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) {
+      setQuery(q);
+      handleSearch(q);
+    }
+  }, [searchParams]);
+
   const toggleVoiceInput = () => {
     if (!recognitionRef.current) {
       toast({
@@ -166,17 +114,29 @@ const Search = () => {
     }
   };
 
-  const handleSearch = (searchQuery: string = query) => {
+  const handleSearch = async (searchQuery: string = query) => {
     if (!searchQuery.trim()) return;
     
     setIsSearching(true);
     setShowSuggestions(false);
+    setSearchParams({ q: searchQuery });
     
-    // Simulate search delay
-    setTimeout(() => {
-      setResults(mockResults);
-      setIsSearching(false);
-    }, 500);
+    const { data, error } = await supabase
+      .from("products")
+      .select(`
+        id, name, slug, price, old_price, images, rating, review_count,
+        brand:brands(name)
+      `)
+      .eq("is_active", true)
+      .ilike("name", `%${searchQuery}%`)
+      .limit(20);
+
+    if (error) {
+      console.error("Search error:", error);
+    } else {
+      setResults((data || []) as SearchResult[]);
+    }
+    setIsSearching(false);
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -188,14 +148,32 @@ const Search = () => {
     setQuery("");
     setResults([]);
     setShowSuggestions(false);
+    setSearchParams({});
     inputRef.current?.focus();
+  };
+
+  const toggleFavorite = (productId: string) => {
+    setFavorites(prev => 
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+    toast({
+      title: favorites.includes(productId) ? "Удалено из избранного" : "Добавлено в избранное"
+    });
+  };
+
+  const addToCart = (product: SearchResult) => {
+    toast({
+      title: "Добавлено в корзину",
+      description: product.name
+    });
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-6 pb-24 lg:pb-12">
-        {/* Search Header */}
         <div className="max-w-2xl mx-auto mb-8">
           <div className="relative">
             <div className="flex items-center gap-2">
@@ -208,9 +186,9 @@ const Search = () => {
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
-                    setShowSuggestions(e.target.value.length > 0);
+                    setShowSuggestions(e.target.value.length === 0);
                   }}
-                  onFocus={() => setShowSuggestions(true)}
+                  onFocus={() => setShowSuggestions(query.length === 0)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   className="pl-12 pr-12 h-14 text-lg rounded-full border-2 focus:border-primary"
                 />
@@ -226,67 +204,28 @@ const Search = () => {
                 )}
               </div>
               
-              {/* Voice Input Button */}
               <Button
                 variant={isListening ? "default" : "outline"}
                 size="icon"
                 className={`h-14 w-14 rounded-full flex-shrink-0 ${isListening ? 'animate-pulse' : ''}`}
                 onClick={toggleVoiceInput}
               >
-                {isListening ? (
-                  <MicOff className="h-6 w-6" />
-                ) : (
-                  <Mic className="h-6 w-6" />
-                )}
+                {isListening ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
               </Button>
 
-              {/* Visual Search Button */}
               <Button
                 variant="outline"
                 size="icon"
                 className="h-14 w-14 rounded-full flex-shrink-0"
-                onClick={() => toast({ title: "Визуальный поиск", description: "Функция будет доступна после подключения AI" })}
+                onClick={() => toast({ title: "Визуальный поиск", description: "Функция будет доступна скоро" })}
               >
                 <Camera className="h-6 w-6" />
               </Button>
             </div>
 
-            {/* AI Suggestions Dropdown */}
-            {showSuggestions && query.length > 0 && (
-              <Card className="absolute top-full left-0 right-0 mt-2 z-50 max-h-[400px] overflow-y-auto">
-                <CardContent className="p-4">
-                  {/* AI Personalized Suggestions */}
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 text-sm font-medium text-primary mb-3">
-                      <Sparkles className="h-4 w-4" />
-                      AI-подсказки для вас
-                    </div>
-                    <div className="space-y-2">
-                      {mockAISuggestions.map((suggestion, index) => (
-                        <button
-                          key={index}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left"
-                          onClick={() => handleSuggestionClick(suggestion.text)}
-                        >
-                          {suggestion.icon || <SearchIcon className="h-4 w-4 text-muted-foreground" />}
-                          <span className="flex-1">{suggestion.text}</span>
-                          {suggestion.type === "tip" && (
-                            <Badge variant="secondary" className="text-xs">Совет</Badge>
-                          )}
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Empty State Suggestions */}
             {showSuggestions && query.length === 0 && (
               <Card className="absolute top-full left-0 right-0 mt-2 z-50">
                 <CardContent className="p-4">
-                  {/* Recent Searches */}
                   {recentSearches.length > 0 && (
                     <div className="mb-4">
                       <div className="flex items-center gap-2 text-sm font-medium mb-3">
@@ -308,9 +247,6 @@ const Search = () => {
                     </div>
                   )}
 
-                  <Separator className="my-4" />
-
-                  {/* Trending */}
                   <div>
                     <div className="flex items-center gap-2 text-sm font-medium mb-3">
                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -335,95 +271,80 @@ const Search = () => {
           </div>
         </div>
 
-        {/* Results */}
-        {results.length > 0 && (
+        {isSearching && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <Skeleton className="aspect-square rounded-lg mb-3" />
+                  <Skeleton className="h-4 w-20 mb-2" />
+                  <Skeleton className="h-5 w-full mb-2" />
+                  <Skeleton className="h-4 w-16 mb-2" />
+                  <Skeleton className="h-6 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {!isSearching && results.length > 0 && (
           <div>
-            {/* Results Header */}
             <div className="flex items-center justify-between mb-6">
               <p className="text-muted-foreground">
                 Найдено <span className="font-medium text-foreground">{results.length}</span> товаров по запросу «{query}»
               </p>
-              
-              {/* Filters */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" className="lg:hidden">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Фильтры
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-80">
-                  <SheetHeader>
-                    <SheetTitle>Фильтры</SheetTitle>
-                  </SheetHeader>
-                  <div className="py-6 space-y-6">
-                    <div>
-                      <Label className="text-sm font-medium mb-4 block">
-                        Цена: {priceRange[0].toLocaleString()} - {priceRange[1].toLocaleString()} ₽
-                      </Label>
-                      <Slider
-                        value={priceRange}
-                        onValueChange={setPriceRange}
-                        max={10000}
-                        step={100}
-                        className="mt-2"
-                      />
-                    </div>
-                    <Separator />
-                    <div>
-                      <Label className="text-sm font-medium mb-4 block">Категория</Label>
-                      <div className="space-y-3">
-                        {["Питомцы", "Дом", "Сад"].map((cat) => (
-                          <div key={cat} className="flex items-center gap-2">
-                            <Checkbox id={cat} />
-                            <Label htmlFor={cat} className="font-normal">{cat}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <Separator />
-                    <div>
-                      <Label className="text-sm font-medium mb-4 block">Бренд</Label>
-                      <div className="space-y-3">
-                        {["Royal Canin", "Trixie", "FURminator", "Bio-Groom"].map((brand) => (
-                          <div key={brand} className="flex items-center gap-2">
-                            <Checkbox id={brand} />
-                            <Label htmlFor={brand} className="font-normal">{brand}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
             </div>
 
-            {/* Results Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {results.map((product) => (
                 <Card key={product.id} className="group cursor-pointer hover:shadow-lg transition-shadow">
                   <CardContent className="p-4">
-                    <div className="aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-1">{product.brand}</p>
-                    <h3 className="font-medium line-clamp-2 mb-2 text-sm">{product.name}</h3>
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="text-yellow-500">★</span>
-                      <span className="text-sm font-medium">{product.rating}</span>
-                      <span className="text-xs text-muted-foreground">({product.reviewCount})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">{product.price.toLocaleString()} ₽</span>
-                      {product.oldPrice && (
-                        <span className="text-sm text-muted-foreground line-through">
-                          {product.oldPrice.toLocaleString()} ₽
-                        </span>
+                    <div className="relative aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
+                      <Link to={`/product/${product.slug}`}>
+                        <img 
+                          src={product.images?.[0] || "/placeholder.svg"} 
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      </Link>
+                      {product.old_price && (
+                        <Badge className="absolute top-2 left-2 bg-destructive">
+                          -{Math.round((1 - product.price / product.old_price) * 100)}%
+                        </Badge>
                       )}
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleFavorite(product.id);
+                        }}
+                      >
+                        <Heart className={`h-4 w-4 ${favorites.includes(product.id) ? 'fill-destructive text-destructive' : ''}`} />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">{product.brand?.name}</p>
+                    <Link to={`/product/${product.slug}`}>
+                      <h3 className="font-medium line-clamp-2 mb-2 text-sm hover:text-primary">{product.name}</h3>
+                    </Link>
+                    <div className="flex items-center gap-1 mb-2">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium">{product.rating || 0}</span>
+                      <span className="text-xs text-muted-foreground">({product.review_count || 0})</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold">{product.price.toLocaleString()} ₽</span>
+                        {product.old_price && (
+                          <span className="text-sm text-muted-foreground line-through ml-2">
+                            {product.old_price.toLocaleString()} ₽
+                          </span>
+                        )}
+                      </div>
+                      <Button size="icon" variant="outline" onClick={() => addToCart(product)}>
+                        <ShoppingCart className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -432,26 +353,29 @@ const Search = () => {
           </div>
         )}
 
-        {/* Empty State */}
         {!isSearching && results.length === 0 && query && (
           <div className="text-center py-12">
             <SearchIcon className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Ничего не найдено</h2>
             <p className="text-muted-foreground mb-6">
-              Попробуйте изменить запрос или воспользуйтесь AI-подсказками
+              Попробуйте изменить запрос или посмотрите популярные товары
             </p>
-            <Button onClick={() => setShowSuggestions(true)}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Показать AI-подсказки
+            <Button asChild>
+              <Link to="/catalog">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Перейти в каталог
+              </Link>
             </Button>
           </div>
         )}
 
-        {/* Loading State */}
-        {isSearching && (
+        {!query && !isSearching && results.length === 0 && (
           <div className="text-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">Ищем товары...</p>
+            <SearchIcon className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Поиск товаров</h2>
+            <p className="text-muted-foreground">
+              Введите название товара или воспользуйтесь голосовым поиском
+            </p>
           </div>
         )}
       </main>
