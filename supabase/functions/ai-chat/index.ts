@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,10 +14,14 @@ serve(async (req) => {
   try {
     const { messages, petProfiles, imageData } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Build context about user's pets
     let petContext = "";
@@ -33,6 +38,15 @@ serve(async (req) => {
       });
     }
 
+    // Fetch some products for context
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name, slug, price, old_price, images, category_id, description')
+      .eq('is_active', true)
+      .limit(50);
+
+    const productList = products?.map(p => `- ${p.name} (ID: ${p.id}, цена: ${p.price}₽)`).join('\n') || '';
+
     const systemPrompt = `Ты - AI-консультант премиального зоомагазина BelBird. Твоя задача - помогать покупателям выбирать товары для их питомцев, дома и сада.
 
 Ключевые принципы:
@@ -43,28 +57,35 @@ serve(async (req) => {
 - Объясняй, почему конкретный товар подходит именно этому питомцу
 - Отвечай кратко и по существу, но информативно
 - Используй эмодзи умеренно для дружелюбности
-- Если пользователь отправил изображение, проанализируй его и дай рекомендации на основе того, что видишь
+- Если пользователь отправил изображение, проанализируй его и дай рекомендации
 ${petContext}
+
+ВАЖНО - ФОРМАТ РЕКОМЕНДАЦИЙ ТОВАРОВ:
+Когда рекомендуешь конкретные товары, ОБЯЗАТЕЛЬНО используй следующий формат для каждого товара:
+[PRODUCT:ID_ТОВАРА]
+
+Например: "Рекомендую корм Royal Canin [PRODUCT:abc123-def456]"
+
+Это позволит показать карточку товара прямо в чате.
+
+Доступные товары в каталоге:
+${productList}
 
 Категории товаров BelBird:
 1. Питомцы - корма, лакомства, игрушки, лежанки, переноски, гигиена, витамины
 2. Дом - декор, текстиль, эко-уборка, кухонные принадлежности
 3. Сад - семена, рассада, инструменты, удобрения
 
-Бренды: Royal Canin, Purina, Trixie, FURminator, Bio-Groom и другие премиальные бренды.
-
 При анализе изображений:
 - Определи, что изображено (питомец, товар, проблема)
 - Если это питомец - определи вид, возможную породу, примерный возраст
-- Дай конкретные рекомендации по товарам из каталога
-- Если видишь проблему (например, с шерстью или кожей) - порекомендуй подходящие средства`;
+- Дай конкретные рекомендации по товарам из каталога с использованием формата [PRODUCT:ID]`;
 
     console.log("Calling Lovable AI with pet context:", petContext);
     console.log("Has image data:", !!imageData);
 
     // Build messages array with potential image content
     const formattedMessages = messages.map((msg: any) => {
-      // If this is the last user message and we have image data, include it
       if (msg.role === "user" && imageData && msg === messages[messages.length - 1]) {
         return {
           role: "user",

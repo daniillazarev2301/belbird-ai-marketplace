@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ChatProductCard from "./ChatProductCard";
 
 interface Message {
   role: "user" | "assistant";
@@ -25,6 +26,16 @@ interface PetProfile {
   special_needs?: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  old_price?: number | null;
+  images?: string[] | null;
+  description?: string | null;
+}
+
 // Typing indicator component
 const TypingIndicator = () => (
   <div className="flex items-center gap-1.5 px-3 py-2">
@@ -37,8 +48,22 @@ const TypingIndicator = () => (
   </div>
 );
 
+// Parse message content and extract product IDs
+const parseProductIds = (content: string): string[] => {
+  const regex = /\[PRODUCT:([a-f0-9-]+)\]/gi;
+  const matches = [...content.matchAll(regex)];
+  return matches.map(m => m[1]);
+};
+
+// Remove product tags from content for display
+const cleanContent = (content: string): string => {
+  return content.replace(/\[PRODUCT:[a-f0-9-]+\]/gi, '').trim();
+};
+
 // Format message content with markdown-like styling
-const FormattedMessage = ({ content }: { content: string }) => {
+const FormattedMessage = ({ content, products }: { content: string; products: Product[] }) => {
+  const cleanedContent = cleanContent(content);
+  
   const formatContent = (text: string) => {
     const lines = text.split('\n');
     
@@ -91,11 +116,22 @@ const FormattedMessage = ({ content }: { content: string }) => {
     });
   };
 
-  return <div className="space-y-0.5">{formatContent(content)}</div>;
+  return (
+    <div className="space-y-0.5">
+      {formatContent(cleanedContent)}
+      {products.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {products.map(product => (
+            <ChatProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const CHAT_STORAGE_KEY = "belbird_ai_chat_history";
-const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB
+const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
 
 const AIChatWidget = () => {
   const { toast } = useToast();
@@ -108,6 +144,7 @@ const AIChatWidget = () => {
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [productCache, setProductCache] = useState<Record<string, Product>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -138,6 +175,41 @@ const AIChatWidget = () => {
     if (messages.length > 0) {
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
     }
+  }, [messages]);
+
+  // Fetch products for product IDs in messages
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const allIds: string[] = [];
+      messages.forEach(msg => {
+        if (msg.role === "assistant") {
+          const ids = parseProductIds(msg.content);
+          ids.forEach(id => {
+            if (!productCache[id]) {
+              allIds.push(id);
+            }
+          });
+        }
+      });
+
+      if (allIds.length === 0) return;
+
+      const uniqueIds = [...new Set(allIds)];
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, slug, price, old_price, images, description')
+        .in('id', uniqueIds);
+
+      if (data) {
+        const newCache = { ...productCache };
+        data.forEach(p => {
+          newCache[p.id] = p;
+        });
+        setProductCache(newCache);
+      }
+    };
+
+    fetchProducts();
   }, [messages]);
 
   useEffect(() => {
@@ -173,7 +245,6 @@ const AIChatWidget = () => {
       const img = new Image();
       
       img.onload = () => {
-        // Max dimensions
         const maxWidth = 800;
         const maxHeight = 800;
         
@@ -190,7 +261,6 @@ const AIChatWidget = () => {
         
         ctx?.drawImage(img, 0, 0, width, height);
         
-        // Convert to base64 with compression
         const base64 = canvas.toDataURL("image/jpeg", 0.7);
         resolve(base64);
       };
@@ -432,6 +502,12 @@ const AIChatWidget = () => {
     setPendingImage(null);
   };
 
+  // Get products for a message
+  const getProductsForMessage = (content: string): Product[] => {
+    const ids = parseProductIds(content);
+    return ids.map(id => productCache[id]).filter(Boolean);
+  };
+
   return (
     <>
       {/* Hidden file input */}
@@ -462,7 +538,7 @@ const AIChatWidget = () => {
       {/* Chat Window */}
       <div
         className={cn(
-          "fixed z-50 bottom-0 right-0 lg:bottom-6 lg:right-6 w-full lg:w-[400px] h-[85vh] lg:h-[600px] lg:max-h-[80vh] bg-background rounded-t-3xl lg:rounded-2xl shadow-2xl flex flex-col transition-all duration-300 overflow-hidden border border-border/50",
+          "fixed z-50 bottom-0 right-0 lg:bottom-6 lg:right-6 w-full lg:w-[420px] h-[85vh] lg:h-[650px] lg:max-h-[85vh] bg-background rounded-t-3xl lg:rounded-2xl shadow-2xl flex flex-col transition-all duration-300 overflow-hidden border border-border/50",
           isOpen
             ? "translate-y-0 opacity-100"
             : "translate-y-full lg:translate-y-8 opacity-0 pointer-events-none"
@@ -525,7 +601,7 @@ const AIChatWidget = () => {
                 Я AI-консультант BelBird. Помогу подобрать товары для ваших питомцев, дома и сада.
               </p>
               <p className="text-xs text-muted-foreground mt-3">
-                📷 Отправьте фото питомца или товара для персональных рекомендаций
+                📷 Отправьте фото для персональных рекомендаций
               </p>
               {petProfiles.length > 0 && (
                 <div className="mt-4 px-3 py-2 rounded-xl bg-primary/10 inline-block">
@@ -566,7 +642,7 @@ const AIChatWidget = () => {
                   </Avatar>
                   <div
                     className={cn(
-                      "max-w-[80%] text-sm leading-relaxed",
+                      "max-w-[85%] text-sm leading-relaxed",
                       message.role === "user"
                         ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md shadow-sm"
                         : "bg-muted/70 rounded-2xl rounded-bl-md border border-border/50"
@@ -584,7 +660,10 @@ const AIChatWidget = () => {
                     )}
                     <div className="px-4 py-2.5">
                       {message.role === "assistant" ? (
-                        <FormattedMessage content={message.content} />
+                        <FormattedMessage 
+                          content={message.content} 
+                          products={getProductsForMessage(message.content)}
+                        />
                       ) : (
                         message.content
                       )}
