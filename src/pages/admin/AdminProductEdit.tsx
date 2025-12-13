@@ -517,316 +517,55 @@ const AdminProductEdit = () => {
           </div>
         </div>
 
-        {/* Product Card Preview */}
-        {formData.name && (
-          <Card className="mb-6 bg-muted/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                {formData.images[0] ? (
-                  isVideo(formData.images[0]) ? (
-                    <video 
-                      src={formData.images[0]} 
-                      className="w-16 h-16 object-cover rounded-lg"
-                      muted
-                      loop
-                      autoPlay
-                      playsInline
-                    />
-                  ) : (
-                    <img 
-                      src={formData.images[0]} 
-                      alt={formData.name} 
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                  )
-                ) : (
-                  <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                    <Package className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{formData.name}</h3>
-                    {formData.is_bestseller && <Badge variant="secondary" className="text-xs"><Flame className="h-3 w-3 mr-1" />Хит</Badge>}
-                    {formData.is_new && <Badge variant="secondary" className="text-xs"><Star className="h-3 w-3 mr-1" />Новинка</Badge>}
-                    {formData.is_ai_recommended && <Badge variant="secondary" className="text-xs"><Bot className="h-3 w-3 mr-1" />AI</Badge>}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{formData.sku || 'Без артикула'}</p>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-lg">{formData.price ? `${parseFloat(formData.price).toLocaleString('ru-RU')} ₽` : '—'}</div>
-                  {formData.old_price && (
-                    <div className="text-sm text-muted-foreground line-through">
-                      {parseFloat(formData.old_price).toLocaleString('ru-RU')} ₽
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="main" className="gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Основное</span>
-            </TabsTrigger>
-            <TabsTrigger value="media" className="gap-2">
-              <ImageIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Медиа</span>
-              {formData.images.length > 0 && (
-                <Badge variant="secondary" className="ml-1">{formData.images.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="seo" className="gap-2">
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">SEO</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Настройки</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Main Info Tab */}
-          <TabsContent value="main" className="space-y-6">
-            <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Основная информация</CardTitle>
-                    <CardDescription>Название, артикул и описание товара</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Название товара *</Label>
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => handleNameChange(e.target.value)}
-                        placeholder="Например: Корм для собак Premium Adult"
-                        className="text-lg"
-                      />
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>URL (slug) *</Label>
-                        <Input
-                          value={formData.slug}
-                          onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                          placeholder="korm-dlya-sobak-premium"
+        {/* WB-style Layout: Media Left, Form Right */}
+        <div className="grid lg:grid-cols-12 gap-6">
+          {/* Left Column - Media */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Product Preview Card */}
+            {formData.name && (
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    {formData.images[0] ? (
+                      isVideo(formData.images[0]) ? (
+                        <video 
+                          src={formData.images[0]} 
+                          className="w-12 h-12 object-cover rounded-lg"
+                          muted
+                          loop
+                          autoPlay
+                          playsInline
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Артикул (SKU)</Label>
-                        <Input
-                          value={formData.sku}
-                          onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                          placeholder="DOG-FOOD-001"
+                      ) : (
+                        <img 
+                          src={formData.images[0]} 
+                          alt={formData.name} 
+                          className="w-12 h-12 object-cover rounded-lg"
                         />
-                      </div>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Описание товара</Label>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={generateDescription}
-                          disabled={generatingDescription}
-                          className="gap-2"
-                        >
-                          {generatingDescription ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                          Сгенерировать AI
-                        </Button>
-                      </div>
-                      <Textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Подробное описание товара для покупателей..."
-                        rows={6}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Характеристики</CardTitle>
-                    <CardDescription>Введите каждую характеристику с новой строки</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      value={featuresText}
-                      onChange={(e) => setFeaturesText(e.target.value)}
-                      placeholder="Премиум качество&#10;Натуральные ингредиенты&#10;Без консервантов&#10;Подходит для всех пород"
-                      rows={5}
-                    />
-                    {featuresText && (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {featuresText.split('\n').filter(Boolean).map((feature, i) => (
-                          <Badge key={i} variant="outline">{feature}</Badge>
-                        ))}
+                      )
+                    ) : (
+                      <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                        <Package className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Цена и наличие
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Цена *</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={formData.price}
-                          onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                          placeholder="0"
-                          className="pr-8"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₽</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{formData.name || 'Укажите наименование'}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {formData.is_bestseller && <Badge variant="secondary" className="text-[10px] px-1.5"><Flame className="h-2.5 w-2.5 mr-0.5" />Хит</Badge>}
+                        {formData.is_new && <Badge variant="secondary" className="text-[10px] px-1.5"><Star className="h-2.5 w-2.5 mr-0.5" />Новинка</Badge>}
+                        {formData.is_ai_recommended && <Badge variant="secondary" className="text-[10px] px-1.5"><Bot className="h-2.5 w-2.5 mr-0.5" />AI</Badge>}
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Старая цена (зачёркнутая)</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={formData.old_price}
-                          onChange={(e) => setFormData(prev => ({ ...prev, old_price: e.target.value }))}
-                          placeholder="0"
-                          className="pr-8"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₽</span>
-                      </div>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <Label>Остаток на складе</Label>
-                      <Input
-                        type="number"
-                        value={formData.stock_count}
-                        onChange={(e) => setFormData(prev => ({ ...prev, stock_count: e.target.value }))}
-                        placeholder="0"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Tag className="h-4 w-4" />
-                      Категория и бренд
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Категория</Label>
-                      <Select
-                        value={formData.category_id}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите категорию" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Бренд</Label>
-                      <Select
-                        value={formData.brand_id}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, brand_id: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите бренд" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {brands.map((brand) => (
-                            <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Media Tab */}
-          <TabsContent value="media" className="space-y-6">
-            {/* Requirements Info */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <Card className="bg-muted/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Требования к фото
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Формат:</span><span>JPG, PNG, WEBP</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Разрешение:</span><span>от {MEDIA_REQUIREMENTS.image.minWidth}×{MEDIA_REQUIREMENTS.image.minHeight} px</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Размер:</span><span>до {MEDIA_REQUIREMENTS.image.maxSizeMB} МБ</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Количество:</span><span>до {MEDIA_REQUIREMENTS.image.maxCount} шт</span></div>
+                  </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    Требования к видео
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Формат:</span><span>MP4, MOV</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Размер:</span><span>до {MEDIA_REQUIREMENTS.video.maxSizeMB} МБ</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Количество:</span><span>{MEDIA_REQUIREMENTS.video.maxCount} шт</span></div>
-                </CardContent>
-              </Card>
-            </div>
+            )}
 
+            {/* Media Upload Area */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <ImageIcon className="h-5 w-5" />
-                    Медиафайлы товара
-                  </span>
-                  {compressionInfo && (
-                    <span className="text-sm font-normal text-green-600 flex items-center gap-1">
-                      <Zap className="h-4 w-4" />
-                      {compressionInfo}
-                    </span>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  Видео автоматически становится главным и воспроизводится при наведении как на WB/Ozon.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <div
-                  className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all mb-6"
+                  className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <input
@@ -840,34 +579,39 @@ const AdminProductEdit = () => {
                   {uploadingImages ? (
                     <div className="space-y-3">
                       <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin" />
-                      <Progress value={uploadProgress} className="w-full max-w-sm mx-auto" />
-                      <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}% — загрузка и сжатие...</p>
+                      <Progress value={uploadProgress} className="w-full max-w-xs mx-auto" />
+                      <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-base font-medium mb-1">Нажмите для выбора файлов</p>
-                      <p className="text-sm text-muted-foreground">
-                        JPG, PNG, WEBP • MP4, MOV • Изображения автоматически сжимаются
+                      <div className="w-16 h-16 mx-auto mb-3 bg-muted rounded-lg flex items-center justify-center">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-base font-medium mb-1">Загрузите файлы или перетащите их сюда</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Какими должны быть фото и видео
                       </p>
+                      <Button variant="outline" size="sm" type="button">
+                        Выбрать
+                      </Button>
                     </>
                   )}
                 </div>
 
-                {formData.images.length > 0 ? (
-                  <>
-                    <div className="flex items-center gap-4 mb-4 flex-wrap">
-                      <Badge variant="outline" className="gap-1">
-                        <ImageIcon className="h-3 w-3" />
-                        {imageCount}/{MEDIA_REQUIREMENTS.image.maxCount} фото
-                      </Badge>
-                      <Badge variant={videoCount >= MEDIA_REQUIREMENTS.video.maxCount ? "secondary" : "outline"} className="gap-1">
-                        <Eye className="h-3 w-3" />
-                        {videoCount}/{MEDIA_REQUIREMENTS.video.maxCount} видео
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        Перетаскивайте для изменения порядка. Первый файл — главный.
-                      </span>
+                {compressionInfo && (
+                  <div className="mt-3 text-center text-sm text-green-600 flex items-center justify-center gap-1">
+                    <Zap className="h-4 w-4" />
+                    {compressionInfo}
+                  </div>
+                )}
+
+                {/* Media Grid */}
+                {formData.images.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-3 mb-3 text-sm text-muted-foreground">
+                      <span>{imageCount}/{MEDIA_REQUIREMENTS.image.maxCount} фото</span>
+                      <span>•</span>
+                      <span>{videoCount}/{MEDIA_REQUIREMENTS.video.maxCount} видео</span>
                     </div>
                     <DndContext
                       sensors={sensors}
@@ -878,7 +622,7 @@ const AdminProductEdit = () => {
                         items={formData.images}
                         strategy={rectSortingStrategy}
                       >
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-3 gap-2">
                           {formData.images.map((url, index) => (
                             <SortableMediaItem
                               key={url}
@@ -893,172 +637,340 @@ const AdminProductEdit = () => {
                         </div>
                       </SortableContext>
                     </DndContext>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <ImageIcon className="h-12 w-12 mb-3" />
-                    <p className="text-lg font-medium">Нет загруженных медиафайлов</p>
-                    <p className="text-sm">Загрузите фото или видеообложку товара</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* SEO Tab */}
-          <TabsContent value="seo" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Search className="h-5 w-5" />
-                    SEO-оптимизация
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={generateSEO}
-                    disabled={generatingSEO}
-                    className="gap-2"
-                  >
-                    {generatingSEO ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    Сгенерировать AI
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Настройте мета-теги для лучшего ранжирования в поисковых системах
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Meta Title</Label>
-                  <Input
-                    value={formData.meta_title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, meta_title: e.target.value }))}
-                    placeholder={formData.name || "Заголовок страницы для поисковиков"}
-                    maxLength={60}
-                  />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {formData.meta_title.length}/60 символов
-                  </p>
+            {/* Media Requirements Info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg border bg-muted/30 text-xs">
+                <p className="font-medium mb-2">Требования к фото</p>
+                <div className="space-y-1 text-muted-foreground">
+                  <p>Формат: JPG, PNG, WEBP</p>
+                  <p>Размер: от {MEDIA_REQUIREMENTS.image.minWidth}×{MEDIA_REQUIREMENTS.image.minHeight}px</p>
+                  <p>До {MEDIA_REQUIREMENTS.image.maxSizeMB} МБ, до {MEDIA_REQUIREMENTS.image.maxCount} шт</p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Meta Description</Label>
-                  <Textarea
-                    value={formData.meta_description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, meta_description: e.target.value }))}
-                    placeholder="Краткое описание товара для поисковой выдачи..."
-                    rows={3}
-                    maxLength={160}
-                  />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {formData.meta_description.length}/160 символов
-                  </p>
+              </div>
+              <div className="p-3 rounded-lg border bg-muted/30 text-xs">
+                <p className="font-medium mb-2">Требования к видео</p>
+                <div className="space-y-1 text-muted-foreground">
+                  <p>Формат: MP4, MOV</p>
+                  <p>До {MEDIA_REQUIREMENTS.video.maxSizeMB} МБ</p>
+                  <p>{MEDIA_REQUIREMENTS.video.maxCount} видеообложка</p>
                 </div>
-
-                <Separator />
-
-                {/* Yandex Preview */}
-                <div>
-                  <Label className="mb-3 block">Предпросмотр в Яндекс</Label>
-                  <div className="border rounded-lg p-4 bg-background">
-                    <div className="text-blue-600 text-lg hover:underline cursor-pointer truncate">
-                      {formData.meta_title || formData.name || "Заголовок товара"}
-                    </div>
-                    <div className="text-green-700 text-sm truncate">
-                      belbird.ru › product › {formData.slug || 'slug'}
-                    </div>
-                    <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                      {formData.meta_description || formData.description?.substring(0, 160) || "Описание товара будет отображаться здесь..."}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Статус публикации</CardTitle>
-                  <CardDescription>Управление видимостью товара в каталоге</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
-                    <div>
-                      <p className="font-medium">Активен</p>
-                      <p className="text-sm text-muted-foreground">Товар виден в каталоге</p>
-                    </div>
-                    <Switch
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Метки товара</CardTitle>
-                  <CardDescription>Отображаются на карточке товара</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                        <Flame className="h-4 w-4 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Хит продаж</p>
-                        <p className="text-xs text-muted-foreground">Популярный товар</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={formData.is_bestseller}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_bestseller: checked }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <Star className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Новинка</p>
-                        <p className="text-xs text-muted-foreground">Новый товар</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={formData.is_new}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_new: checked }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">AI рекомендация</p>
-                        <p className="text-xs text-muted-foreground">Рекомендован AI</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={formData.is_ai_recommended}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_ai_recommended: checked }))}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+
+          {/* Right Column - Form */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Main Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="w-full">
+                <TabsTrigger value="main" className="flex-1 gap-2">
+                  <FileText className="h-4 w-4" />
+                  Основное
+                </TabsTrigger>
+                <TabsTrigger value="seo" className="flex-1 gap-2">
+                  <Search className="h-4 w-4" />
+                  SEO
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex-1 gap-2">
+                  <Settings className="h-4 w-4" />
+                  Настройки
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Main Info Tab */}
+              <TabsContent value="main" className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Основная информация</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Наименование *</Label>
+                      <Input
+                        value={formData.name}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        placeholder="Например: Корм для собак Premium Adult"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Категория продавца</Label>
+                        <Select
+                          value={formData.category_id}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выбрать" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Артикул продавца</Label>
+                        <Input
+                          value={formData.sku}
+                          onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                          placeholder="DOG-FOOD-001"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Описание</Label>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={generateDescription}
+                          disabled={generatingDescription}
+                          className="gap-1 text-xs"
+                        >
+                          {generatingDescription ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          Сгенерировать
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Подробное описание товара..."
+                        rows={4}
+                      />
+                      <p className="text-xs text-muted-foreground text-right">Без ограничений</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Характеристики</Label>
+                      <Textarea
+                        value={featuresText}
+                        onChange={(e) => setFeaturesText(e.target.value)}
+                        placeholder="Премиум качество&#10;Натуральные ингредиенты"
+                        rows={3}
+                      />
+                      {featuresText && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {featuresText.split('\n').filter(Boolean).map((feature, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{feature}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Цена и наличие
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Цена *</Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={formData.price}
+                            onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                            placeholder="0"
+                            className="pr-8"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₽</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Старая цена</Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={formData.old_price}
+                            onChange={(e) => setFormData(prev => ({ ...prev, old_price: e.target.value }))}
+                            placeholder="0"
+                            className="pr-8"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₽</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Остаток</Label>
+                        <Input
+                          type="number"
+                          value={formData.stock_count}
+                          onChange={(e) => setFormData(prev => ({ ...prev, stock_count: e.target.value }))}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>URL (slug)</Label>
+                        <Input
+                          value={formData.slug}
+                          onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                          placeholder="korm-dlya-sobak-premium"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Бренд</Label>
+                        <Select
+                          value={formData.brand_id}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, brand_id: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выбрать бренд" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {brands.map((brand) => (
+                              <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* SEO Tab */}
+              <TabsContent value="seo" className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span>SEO-оптимизация</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={generateSEO}
+                        disabled={generatingSEO}
+                        className="gap-1 text-xs"
+                      >
+                        {generatingSEO ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        Сгенерировать
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Meta Title</Label>
+                      <Input
+                        value={formData.meta_title}
+                        onChange={(e) => setFormData(prev => ({ ...prev, meta_title: e.target.value }))}
+                        placeholder={formData.name || "Заголовок для поисковиков"}
+                        maxLength={60}
+                      />
+                      <p className="text-xs text-muted-foreground text-right">{formData.meta_title.length}/60</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Meta Description</Label>
+                      <Textarea
+                        value={formData.meta_description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, meta_description: e.target.value }))}
+                        placeholder="Краткое описание для поисковой выдачи..."
+                        rows={2}
+                        maxLength={160}
+                      />
+                      <p className="text-xs text-muted-foreground text-right">{formData.meta_description.length}/160</p>
+                    </div>
+                    <Separator />
+                    <div>
+                      <Label className="mb-2 block text-xs">Предпросмотр в Яндекс</Label>
+                      <div className="border rounded-lg p-3 bg-background text-sm">
+                        <div className="text-blue-600 hover:underline cursor-pointer truncate">
+                          {formData.meta_title || formData.name || "Заголовок товара"}
+                        </div>
+                        <div className="text-green-700 text-xs truncate">
+                          belbird.ru › product › {formData.slug || 'slug'}
+                        </div>
+                        <div className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                          {formData.meta_description || formData.description?.substring(0, 160) || "Описание товара..."}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Settings Tab */}
+              <TabsContent value="settings" className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Статус и метки</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                      <div>
+                        <p className="font-medium text-sm">Активен</p>
+                        <p className="text-xs text-muted-foreground">Товар виден в каталоге</p>
+                      </div>
+                      <Switch
+                        checked={formData.is_active}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
+                      />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <Flame className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm">Хит продаж</span>
+                      </div>
+                      <Switch
+                        checked={formData.is_bestseller}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_bestseller: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Новинка</span>
+                      </div>
+                      <Switch
+                        checked={formData.is_new}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_new: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm">AI рекомендация</span>
+                      </div>
+                      <Switch
+                        checked={formData.is_ai_recommended}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_ai_recommended: checked }))}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="flex items-center justify-between mt-6 pt-4 border-t">
+          <Button variant="outline" onClick={() => navigate('/admin/products')} className="gap-2">
+            К списку товаров
+          </Button>
+          <Button onClick={handleSubmit} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isNew ? "Создать и завершить" : "Сохранить изменения"}
+          </Button>
+        </div>
       </AdminLayout>
     </>
   );

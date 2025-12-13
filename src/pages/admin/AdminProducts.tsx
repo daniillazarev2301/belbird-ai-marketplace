@@ -38,7 +38,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Plus,
@@ -124,8 +123,6 @@ const AdminProducts = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
   const [bulkEditData, setBulkEditData] = useState<BulkEditData>({});
   const [bulkEditFields, setBulkEditFields] = useState<Record<string, boolean>>({});
@@ -134,22 +131,6 @@ const AdminProducts = () => {
   useRealtimeSubscription({
     table: "products",
     queryKey: ["admin-products"],
-  });
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    price: "",
-    old_price: "",
-    stock_count: "",
-    sku: "",
-    category_id: "",
-    is_active: true,
-    is_bestseller: false,
-    is_new: false,
-    is_ai_recommended: false,
   });
 
   // Fetch products
@@ -207,68 +188,6 @@ const AdminProducts = () => {
     },
   });
 
-  // Create product mutation
-  const createProduct = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("products").insert({
-        name: data.name,
-        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, "-"),
-        description: data.description || null,
-        price: parseFloat(data.price) || 0,
-        old_price: data.old_price ? parseFloat(data.old_price) : null,
-        stock_count: data.stock_count ? parseInt(data.stock_count) : 0,
-        sku: data.sku || null,
-        category_id: data.category_id || null,
-        is_active: data.is_active,
-        is_bestseller: data.is_bestseller,
-        is_new: data.is_new,
-        is_ai_recommended: data.is_ai_recommended,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-      toast.success("Товар успешно добавлен");
-      setAddDialogOpen(false);
-      resetForm();
-    },
-    onError: (error) => {
-      toast.error("Ошибка при добавлении товара: " + error.message);
-    },
-  });
-
-  const updateProduct = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase
-        .from("products")
-        .update({
-          name: data.name,
-          slug: data.slug,
-          description: data.description || null,
-          price: parseFloat(data.price) || 0,
-          old_price: data.old_price ? parseFloat(data.old_price) : null,
-          stock_count: data.stock_count ? parseInt(data.stock_count) : 0,
-          sku: data.sku || null,
-          category_id: data.category_id || null,
-          is_active: data.is_active,
-          is_bestseller: data.is_bestseller,
-          is_new: data.is_new,
-          is_ai_recommended: data.is_ai_recommended,
-        })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-      toast.success("Товар успешно обновлён");
-      setEditProduct(null);
-      resetForm();
-    },
-    onError: (error) => {
-      toast.error("Ошибка при обновлении товара: " + error.message);
-    },
-  });
-
   // Delete product mutation
   const deleteProduct = useMutation({
     mutationFn: async (id: string) => {
@@ -283,54 +202,6 @@ const AdminProducts = () => {
       toast.error("Ошибка при удалении: " + error.message);
     },
   });
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      slug: "",
-      description: "",
-      price: "",
-      old_price: "",
-      stock_count: "",
-      sku: "",
-      category_id: "",
-      is_active: true,
-      is_bestseller: false,
-      is_new: false,
-      is_ai_recommended: false,
-    });
-  };
-
-  const openEditDialog = (product: Product) => {
-    setEditProduct(product);
-    setFormData({
-      name: product.name,
-      slug: product.slug,
-      description: product.description || "",
-      price: product.price.toString(),
-      old_price: product.old_price?.toString() || "",
-      stock_count: product.stock_count?.toString() || "",
-      sku: product.sku || "",
-      category_id: product.category_id || "",
-      is_active: product.is_active ?? true,
-      is_bestseller: product.is_bestseller ?? false,
-      is_new: product.is_new ?? false,
-      is_ai_recommended: product.is_ai_recommended ?? false,
-    });
-  };
-
-  const handleSubmit = () => {
-    if (!formData.name || !formData.price) {
-      toast.error("Заполните название и цену");
-      return;
-    }
-
-    if (editProduct) {
-      updateProduct.mutate({ id: editProduct.id, data: formData });
-    } else {
-      createProduct.mutate(formData);
-    }
-  };
 
   const toggleAll = () => {
     if (selectedProducts.length === products.length) {
@@ -512,7 +383,7 @@ const AdminProducts = () => {
               <Download className="h-4 w-4" />
               Экспорт
             </Button>
-            <Button size="sm" className="gap-1" onClick={() => setAddDialogOpen(true)}>
+            <Button size="sm" className="gap-1" onClick={() => navigate('/admin/products/new')}>
               <Plus className="h-4 w-4" />
               Добавить товар
             </Button>
@@ -528,7 +399,7 @@ const AdminProducts = () => {
           ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-muted-foreground mb-4">Товары не найдены</p>
-              <Button onClick={() => setAddDialogOpen(true)}>
+              <Button onClick={() => navigate('/admin/products/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Добавить первый товар
               </Button>
@@ -615,7 +486,7 @@ const AdminProducts = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(product)}>
+                            <DropdownMenuItem onClick={() => navigate(`/admin/products/${product.id}`)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Редактировать
                             </DropdownMenuItem>
@@ -651,150 +522,6 @@ const AdminProducts = () => {
           </div>
         )}
       </AdminLayout>
-
-      {/* Add/Edit Product Dialog */}
-      <Dialog open={addDialogOpen || !!editProduct} onOpenChange={(open) => {
-        if (!open) {
-          setAddDialogOpen(false);
-          setEditProduct(null);
-          resetForm();
-        }
-      }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editProduct ? "Редактировать товар" : "Добавить товар"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Корм для собак"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Цена *</Label>
-                <Input
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  placeholder="1990"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Старая цена</Label>
-                <Input
-                  type="number"
-                  value={formData.old_price}
-                  onChange={(e) => setFormData({ ...formData, old_price: e.target.value })}
-                  placeholder="2490"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>SKU</Label>
-                <Input
-                  value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  placeholder="RC-001"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Остаток</Label>
-                <Input
-                  type="number"
-                  value={formData.stock_count}
-                  onChange={(e) => setFormData({ ...formData, stock_count: e.target.value })}
-                  placeholder="100"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Категория</Label>
-              <Select
-                value={formData.category_id}
-                onValueChange={(value) => setFormData({ ...formData, category_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите категорию" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Slug (URL)</Label>
-              <Input
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                placeholder="korm-dlya-sobak"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Описание</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Описание товара..."
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: !!checked })}
-                />
-                <Label>Активен</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={formData.is_bestseller}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_bestseller: !!checked })}
-                />
-                <Label>Хит продаж</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={formData.is_new}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_new: !!checked })}
-                />
-                <Label>Новинка</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={formData.is_ai_recommended}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_ai_recommended: !!checked })}
-                />
-                <Label>AI рекомендация</Label>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setAddDialogOpen(false);
-              setEditProduct(null);
-              resetForm();
-            }}>
-              Отмена
-            </Button>
-            <Button onClick={handleSubmit} disabled={createProduct.isPending || updateProduct.isPending}>
-              {(createProduct.isPending || updateProduct.isPending) && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              {editProduct ? "Сохранить" : "Добавить"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Bulk Edit Dialog */}
       <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
