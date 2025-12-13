@@ -34,7 +34,7 @@ import {
 import { 
   Plus, Search, Edit, Trash2, Eye, Loader2, RefreshCw, Save, 
   Globe, FileText, Image, Settings2, Calendar, Clock, ExternalLink,
-  Copy, CheckCheck
+  Copy, CheckCheck, Sparkles, Wand2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -77,6 +77,7 @@ const AdminBlog = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editPost, setEditPost] = useState<BlogPost | null>(null);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [aiGenerating, setAiGenerating] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -90,6 +91,58 @@ const AdminBlog = () => {
     meta_description: "",
     scheduled_at: "",
   });
+
+  const generateAIContent = async (type: 'full_article' | 'excerpt' | 'seo' | 'improve') => {
+    if (!formData.title && type !== 'improve') {
+      toast.error("Введите заголовок статьи");
+      return;
+    }
+    if (type === 'improve' && !formData.content) {
+      toast.error("Введите текст статьи для улучшения");
+      return;
+    }
+
+    setAiGenerating(type);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-blog-content', {
+        body: {
+          title: formData.title,
+          category: formData.category,
+          keywords: formData.tags,
+          type,
+          existingContent: formData.content || formData.excerpt,
+        },
+      });
+
+      if (error) throw error;
+
+      if (type === 'full_article' || type === 'improve') {
+        setFormData(prev => ({ ...prev, content: data.content }));
+        toast.success("Статья сгенерирована");
+      } else if (type === 'excerpt') {
+        setFormData(prev => ({ ...prev, excerpt: data.content }));
+        toast.success("Анонс сгенерирован");
+      } else if (type === 'seo') {
+        try {
+          const seoData = JSON.parse(data.content);
+          setFormData(prev => ({
+            ...prev,
+            meta_title: seoData.metaTitle || seoData.meta_title || '',
+            meta_description: seoData.metaDescription || seoData.meta_description || '',
+            tags: seoData.tags?.join(', ') || prev.tags,
+          }));
+          toast.success("SEO-теги сгенерированы");
+        } catch {
+          toast.error("Ошибка парсинга SEO-данных");
+        }
+      }
+    } catch (error) {
+      console.error('AI generation error:', error);
+      toast.error("Ошибка генерации контента");
+    } finally {
+      setAiGenerating(null);
+    }
+  };
 
   const { data: posts = [], isLoading, refetch } = useQuery({
     queryKey: ["admin-blog", searchQuery],
@@ -546,7 +599,24 @@ const AdminBlog = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Краткое описание (анонс)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Краткое описание (анонс)</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 h-7 text-xs"
+                        onClick={() => generateAIContent('excerpt')}
+                        disabled={!!aiGenerating}
+                      >
+                        {aiGenerating === 'excerpt' ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5" />
+                        )}
+                        AI Анонс
+                      </Button>
+                    </div>
                     <Textarea
                       value={formData.excerpt}
                       onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
@@ -556,7 +626,41 @@ const AdminBlog = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Содержание статьи</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Содержание статьи</Label>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 h-7 text-xs"
+                          onClick={() => generateAIContent('full_article')}
+                          disabled={!!aiGenerating}
+                        >
+                          {aiGenerating === 'full_article' ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-3.5 w-3.5" />
+                          )}
+                          Сгенерировать
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 h-7 text-xs"
+                          onClick={() => generateAIContent('improve')}
+                          disabled={!!aiGenerating || !formData.content}
+                        >
+                          {aiGenerating === 'improve' ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
+                          Улучшить
+                        </Button>
+                      </div>
+                    </div>
                     <Textarea
                       value={formData.content}
                       onChange={(e) => setFormData({ ...formData, content: e.target.value })}
@@ -565,7 +669,7 @@ const AdminBlog = () => {
                       className="font-mono text-sm"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Поддерживается форматирование текста
+                      Поддерживается форматирование текста. AI может сгенерировать статью по заголовку или улучшить существующий текст.
                     </p>
                   </div>
 
@@ -614,9 +718,26 @@ const AdminBlog = () => {
                 <TabsContent value="seo" className="space-y-4 m-0">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        Поисковая оптимизация
+                      <CardTitle className="text-base flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Поисковая оптимизация
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => generateAIContent('seo')}
+                          disabled={!!aiGenerating}
+                        >
+                          {aiGenerating === 'seo' ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
+                          AI SEO-теги
+                        </Button>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
