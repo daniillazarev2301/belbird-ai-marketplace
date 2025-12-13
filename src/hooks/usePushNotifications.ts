@@ -2,13 +2,28 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// VAPID public key - will be loaded from environment
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length) as Uint8Array<ArrayBuffer>;
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check if push notifications are supported
     const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
     setIsSupported(supported);
 
@@ -35,7 +50,6 @@ export const usePushNotifications = () => {
 
     setIsLoading(true);
     try {
-      // Request notification permission
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         toast.error('Разрешение на уведомления отклонено');
@@ -44,27 +58,48 @@ export const usePushNotifications = () => {
 
       const registration = await navigator.serviceWorker.ready;
       
-      // For demo purposes, we'll create a mock subscription
-      // In production, you would use VAPID keys
-      const mockSubscription = {
-        endpoint: `https://push.example.com/${crypto.randomUUID()}`,
-        p256dh: btoa(crypto.randomUUID()),
-        auth: btoa(crypto.randomUUID().slice(0, 16))
-      };
+      let subscription: PushSubscription | null = null;
+      
+      // Try to use real VAPID subscription if key is available
+      if (VAPID_PUBLIC_KEY) {
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+        } catch (err) {
+          console.warn('Could not create real subscription, using mock:', err);
+        }
+      }
 
-      // Get current user
+      // Get subscription keys
+      let endpoint: string;
+      let p256dh: string;
+      let auth: string;
+
+      if (subscription) {
+        const keys = subscription.toJSON().keys;
+        endpoint = subscription.endpoint;
+        p256dh = keys?.p256dh || '';
+        auth = keys?.auth || '';
+      } else {
+        // Mock subscription for development
+        endpoint = `https://push.example.com/${crypto.randomUUID()}`;
+        p256dh = btoa(crypto.randomUUID());
+        auth = btoa(crypto.randomUUID().slice(0, 16));
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('Необходимо войти в аккаунт');
         return false;
       }
 
-      // Save subscription to database
       const { error } = await supabase.from('push_subscriptions').upsert({
         user_id: user.id,
-        endpoint: mockSubscription.endpoint,
-        p256dh: mockSubscription.p256dh,
-        auth: mockSubscription.auth
+        endpoint,
+        p256dh,
+        auth
       }, {
         onConflict: 'endpoint'
       });
