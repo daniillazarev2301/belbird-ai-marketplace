@@ -192,6 +192,33 @@ const Checkout = () => {
         .insert(orderItems);
       
       if (itemsError) throw itemsError;
+
+      // Award loyalty points (3% of order total, 1 point = 1 ruble)
+      if (user) {
+        const pointsToAward = Math.floor(total * 0.03);
+        if (pointsToAward > 0) {
+          // Create loyalty transaction
+          await supabase.from("loyalty_transactions").insert({
+            user_id: user.id,
+            order_id: order.id,
+            points: pointsToAward,
+            type: "earn",
+            description: `Начисление за заказ #${order.id.slice(0, 8).toUpperCase()}`
+          });
+
+          // Update profile points
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("loyalty_points")
+            .eq("id", user.id)
+            .single();
+
+          await supabase
+            .from("profiles")
+            .update({ loyalty_points: (profile?.loyalty_points || 0) + pointsToAward })
+            .eq("id", user.id);
+        }
+      }
       
       // If payment method is card and Alfa-Bank is enabled, process payment
       if (payment === "card" && alfaBankEnabled) {
@@ -244,10 +271,13 @@ const Checkout = () => {
       }
       
       clearCart();
+
+      // Show loyalty points earned
+      const pointsEarned = user ? Math.floor(total * 0.03) : 0;
       
       toast({
         title: "Заказ оформлен!",
-        description: `Номер заказа: #${order.id.slice(0, 8).toUpperCase()}. Мы отправим подтверждение на вашу почту.`,
+        description: `Номер заказа: #${order.id.slice(0, 8).toUpperCase()}.${pointsEarned > 0 ? ` Начислено ${pointsEarned} бонусов!` : ""}`,
       });
       
       navigate("/account/orders");

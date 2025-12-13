@@ -37,6 +37,7 @@ import AdminStories from "./pages/admin/AdminStories";
 import AdminABTests from "./pages/admin/AdminABTests";
 import Compare from "./pages/Compare";
 import PaymentResult from "./pages/PaymentResult";
+import Install from "./pages/Install";
 import AccountProfile from "./pages/account/AccountProfile";
 import AccountOrders from "./pages/account/AccountOrders";
 import AccountPets from "./pages/account/AccountPets";
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/payment-result" element={<PaymentResult />} />
               <Route path="/compare" element={<Compare />} />
+              <Route path="/install" element={<Install />} />
               
               {/* Static Pages */}
               <Route path="/about" element={<StaticPage />} />
