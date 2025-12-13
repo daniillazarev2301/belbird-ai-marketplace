@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2, MapPin, Gift, Minus, Plus } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,13 +99,28 @@ const Checkout = () => {
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | undefined>(undefined);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
   const alfaBankEnabled = settings?.payment?.alfa_bank_enabled ?? false;
 
-  // Check if user is authenticated
+  // Check if user is authenticated and load loyalty points
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setIsAuthenticated(!!user);
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("loyalty_points")
+          .eq("id", user.id)
+          .single();
+        
+        if (profile?.loyalty_points) {
+          setUserPoints(profile.loyalty_points);
+        }
+      }
     };
     checkAuth();
   }, []);
@@ -138,7 +154,9 @@ const Checkout = () => {
   });
 
   const subtotal = getTotal();
-  const total = subtotal + deliveryPrice;
+  const maxPointsToUse = Math.min(userPoints, Math.floor(subtotal * 0.5)); // Max 50% of order
+  const pointsDiscount = usePoints ? pointsToUse : 0;
+  const total = subtotal + deliveryPrice - pointsDiscount;
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -193,11 +211,22 @@ const Checkout = () => {
       
       if (itemsError) throw itemsError;
 
-      // Award loyalty points (3% of order total, 1 point = 1 ruble)
+      // Handle loyalty points: spend and earn
       if (user) {
+        // First, spend points if selected
+        if (usePoints && pointsToUse > 0) {
+          await supabase.from("loyalty_transactions").insert({
+            user_id: user.id,
+            order_id: order.id,
+            points: -pointsToUse,
+            type: "spend",
+            description: `Списание за заказ #${order.id.slice(0, 8).toUpperCase()}`
+          });
+        }
+
+        // Award loyalty points (3% of order total after discount, 1 point = 1 ruble)
         const pointsToAward = Math.floor(total * 0.03);
         if (pointsToAward > 0) {
-          // Create loyalty transaction
           await supabase.from("loyalty_transactions").insert({
             user_id: user.id,
             order_id: order.id,
@@ -205,19 +234,14 @@ const Checkout = () => {
             type: "earn",
             description: `Начисление за заказ #${order.id.slice(0, 8).toUpperCase()}`
           });
-
-          // Update profile points
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("loyalty_points")
-            .eq("id", user.id)
-            .single();
-
-          await supabase
-            .from("profiles")
-            .update({ loyalty_points: (profile?.loyalty_points || 0) + pointsToAward })
-            .eq("id", user.id);
         }
+
+        // Update profile points (subtract spent, add earned)
+        const netPoints = pointsToAward - (usePoints ? pointsToUse : 0);
+        await supabase
+          .from("profiles")
+          .update({ loyalty_points: userPoints + netPoints })
+          .eq("id", user.id);
       }
       
       // If payment method is card and Alfa-Bank is enabled, process payment
@@ -575,7 +599,75 @@ const Checkout = () => {
                     <span className="text-muted-foreground">Доставка</span>
                     <span>{deliveryPrice === 0 ? "Бесплатно" : `${deliveryPrice.toLocaleString()} ₽`}</span>
                   </div>
+                  {pointsDiscount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Скидка бонусами</span>
+                      <span>-{pointsDiscount.toLocaleString()} ₽</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Loyalty Points Section */}
+                {isAuthenticated && userPoints > 0 && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Gift className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium">Использовать бонусы</span>
+                        </div>
+                        <Switch
+                          checked={usePoints}
+                          onCheckedChange={(checked) => {
+                            setUsePoints(checked);
+                            if (checked) {
+                              setPointsToUse(maxPointsToUse);
+                            } else {
+                              setPointsToUse(0);
+                            }
+                          }}
+                        />
+                      </div>
+                      {usePoints && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setPointsToUse(Math.max(0, pointsToUse - 100))}
+                              disabled={pointsToUse <= 0}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={pointsToUse}
+                              onChange={(e) => {
+                                const value = Math.min(maxPointsToUse, Math.max(0, parseInt(e.target.value) || 0));
+                                setPointsToUse(value);
+                              }}
+                              className="h-8 w-24 text-center"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setPointsToUse(Math.min(maxPointsToUse, pointsToUse + 100))}
+                              disabled={pointsToUse >= maxPointsToUse}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Доступно: {userPoints.toLocaleString()} бонусов (макс. 50% от заказа)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <Separator className="my-4" />
 
