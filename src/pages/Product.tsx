@@ -19,6 +19,7 @@ import { useCart } from "@/contexts/CartContext";
 import { ReviewForm } from "@/components/product/ReviewForm";
 import { ReviewList } from "@/components/product/ReviewList";
 import { RichContentDisplay } from "@/components/product/RichContentDisplay";
+import { RelatedProducts } from "@/components/product/RelatedProducts";
 
 interface RichContentBlock {
   id: string;
@@ -43,6 +44,8 @@ interface ProductData {
   sku?: string;
   specifications?: Record<string, string>;
   rich_content?: unknown;
+  category_id?: string;
+  brand_id?: string;
   brand?: { name: string; slug: string };
   category?: { name: string; slug: string };
 }
@@ -69,7 +72,7 @@ const Product = () => {
     let query = supabase
       .from("products")
       .select(`
-        id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content,
+        id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content, category_id, brand_id,
         brand:brands(name, slug),
         category:categories(name, slug)
       `)
@@ -82,7 +85,7 @@ const Product = () => {
       const result = await supabase
         .from("products")
         .select(`
-          id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content,
+          id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content, category_id, brand_id,
           brand:brands(name, slug),
           category:categories(name, slug)
         `)
@@ -477,6 +480,15 @@ const Product = () => {
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Related Products */}
+          <div className="mt-12">
+            <RelatedProducts 
+              currentProductId={product.id} 
+              categoryId={product.category_id}
+              brandId={product.brand_id}
+            />
+          </div>
         </div>
       </main>
       <Footer />
