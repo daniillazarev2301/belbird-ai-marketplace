@@ -73,10 +73,12 @@ const Compare = () => {
 
   const handleAddToCart = (product: Product) => {
     addItem({
-      id: product.id,
+      productId: product.id,
       name: product.name,
       price: product.price,
+      oldPrice: product.old_price || undefined,
       image: product.images?.[0] || "/placeholder.svg",
+      slug: product.slug,
       quantity: 1,
     });
     toast.success("Добавлено в корзину");
