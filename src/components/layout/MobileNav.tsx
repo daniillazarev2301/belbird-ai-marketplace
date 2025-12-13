@@ -1,7 +1,9 @@
-import { Home, Search, Heart, ShoppingCart, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Home, Search, Heart, ShoppingCart, User, LogIn } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/contexts/CartContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -21,10 +23,10 @@ const NavItem = ({ icon, label, href, active, badge }: NavItemProps) => (
   >
     <div className="relative">
       {icon}
-      {badge && badge > 0 && (
-        <Badge className="absolute -right-2 -top-2 h-4 w-4 rounded-full p-0 text-[10px] flex items-center justify-center bg-secondary text-secondary-foreground">
-          {badge}
-        </Badge>
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute -right-2 -top-2 h-4 min-w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-medium flex items-center justify-center px-1">
+          {badge > 99 ? "99+" : badge}
+        </span>
       )}
     </div>
     <span className="text-[10px] font-medium">{label}</span>
@@ -33,13 +35,35 @@ const NavItem = ({ icon, label, href, active, badge }: NavItemProps) => (
 
 const MobileNav = () => {
   const location = useLocation();
+  const { getItemCount } = useCart();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session?.user);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const cartCount = getItemCount();
   
   const navItems = [
     { icon: <Home className="h-5 w-5" />, label: "Главная", href: "/" },
     { icon: <Search className="h-5 w-5" />, label: "Поиск", href: "/search" },
-    { icon: <Heart className="h-5 w-5" />, label: "Избранное", href: "/account/favorites" },
-    { icon: <ShoppingCart className="h-5 w-5" />, label: "Корзина", href: "/cart", badge: 0 },
-    { icon: <User className="h-5 w-5" />, label: "Профиль", href: "/account" },
+    { icon: <Heart className="h-5 w-5" />, label: "Избранное", href: isAuthenticated ? "/account/favorites" : "/auth" },
+    { icon: <ShoppingCart className="h-5 w-5" />, label: "Корзина", href: "/cart", badge: cartCount },
+    { 
+      icon: isAuthenticated ? <User className="h-5 w-5" /> : <LogIn className="h-5 w-5" />, 
+      label: isAuthenticated ? "Профиль" : "Войти", 
+      href: isAuthenticated ? "/account" : "/auth" 
+    },
   ];
 
   return (
@@ -47,7 +71,7 @@ const MobileNav = () => {
       <div className="flex items-center justify-around">
         {navItems.map((item) => (
           <NavItem 
-            key={item.href} 
+            key={item.href + item.label} 
             {...item} 
             active={location.pathname === item.href || (item.href !== "/" && location.pathname.startsWith(item.href))}
           />
