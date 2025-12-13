@@ -17,9 +17,8 @@ const FeaturedProducts = () => {
           category:categories(name)
         `)
         .eq("is_active", true)
-        .or("is_bestseller.eq.true,is_new.eq.true,is_ai_recommended.eq.true")
-        .order("review_count", { ascending: false })
-        .limit(8);
+        .order("created_at", { ascending: false })
+        .limit(12);
 
       if (error) throw error;
       
@@ -29,6 +28,7 @@ const FeaturedProducts = () => {
         price: p.price,
         oldPrice: p.old_price || undefined,
         image: p.images?.[0] || "/placeholder.svg",
+        images: p.images || [],
         rating: p.rating || 0,
         reviewCount: p.review_count || 0,
         category: p.category?.name || "",
@@ -51,7 +51,7 @@ const FeaturedProducts = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
-            {[...Array(8)].map((_, i) => (
+            {[...Array(12)].map((_, i) => (
               <div key={i} className="space-y-3">
                 <Skeleton className="aspect-square rounded-xl" />
                 <Skeleton className="h-4 w-20" />
@@ -78,11 +78,11 @@ const FeaturedProducts = () => {
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-5 w-5 text-primary" />
               <span className="text-sm font-medium text-primary">
-                Популярные товары
+                Каталог товаров
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-serif font-semibold">
-              Хиты продаж
+              Наши товары
             </h2>
           </div>
           <Link

@@ -23,6 +23,9 @@ import {
   Loader2,
   Sparkles,
   Image as ImageIcon,
+  Video,
+  Star,
+  GripVertical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -150,7 +153,12 @@ const AdminProductEdit = () => {
     }));
   };
 
-  const handleImageUpload = async (files: FileList | null) => {
+  const isVideo = (url: string) => {
+    const lower = url.toLowerCase();
+    return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.gif') || lower.includes('video');
+  };
+
+  const handleMediaUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
     setUploadingImages(true);
@@ -158,9 +166,10 @@ const AdminProductEdit = () => {
 
     try {
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split('.').pop()?.toLowerCase();
+        const isVideoFile = ['mp4', 'webm', 'gif'].includes(fileExt || '');
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `product-images/${fileName}`;
+        const filePath = `product-${isVideoFile ? 'videos' : 'images'}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('products')
@@ -179,24 +188,52 @@ const AdminProductEdit = () => {
         newUrls.push(publicUrl);
       }
 
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...newUrls],
-      }));
-      toast.success(`Загружено ${newUrls.length} изображений`);
+      // Videos go first by default
+      const videos = newUrls.filter(url => isVideo(url));
+      const images = newUrls.filter(url => !isVideo(url));
+      
+      setFormData(prev => {
+        const existingVideos = prev.images.filter(url => isVideo(url));
+        const existingImages = prev.images.filter(url => !isVideo(url));
+        return {
+          ...prev,
+          images: [...existingVideos, ...videos, ...existingImages, ...images],
+        };
+      });
+      toast.success(`Загружено ${newUrls.length} файлов`);
     } catch (error) {
-      console.error('Error uploading images:', error);
-      toast.error("Ошибка при загрузке изображений");
+      console.error('Error uploading media:', error);
+      toast.error("Ошибка при загрузке файлов");
     } finally {
       setUploadingImages(false);
     }
   };
 
-  const removeImage = (url: string) => {
+  const removeMedia = (url: string) => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter(u => u !== url),
     }));
+  };
+
+  const setAsMain = (url: string) => {
+    setFormData(prev => {
+      const filtered = prev.images.filter(u => u !== url);
+      return {
+        ...prev,
+        images: [url, ...filtered],
+      };
+    });
+    toast.success("Установлено как главное");
+  };
+
+  const moveMedia = (fromIndex: number, toIndex: number) => {
+    setFormData(prev => {
+      const newImages = [...prev.images];
+      const [moved] = newImages.splice(fromIndex, 1);
+      newImages.splice(toIndex, 0, moved);
+      return { ...prev, images: newImages };
+    });
   };
 
   const generateDescription = async () => {
@@ -373,10 +410,13 @@ const AdminProductEdit = () => {
               </CardContent>
             </Card>
 
-            {/* Images */}
+            {/* Media (Images & Videos) */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Изображения</CardTitle>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Медиа (фото и видео)
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div
@@ -386,10 +426,10 @@ const AdminProductEdit = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/mp4,video/webm,.gif"
                     multiple
                     className="hidden"
-                    onChange={(e) => handleImageUpload(e.target.files)}
+                    onChange={(e) => handleMediaUpload(e.target.files)}
                   />
                   {uploadingImages ? (
                     <Loader2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground animate-spin" />
@@ -400,39 +440,91 @@ const AdminProductEdit = () => {
                     {uploadingImages ? "Загрузка..." : "Нажмите для выбора файлов"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG, WEBP до 10MB
+                    PNG, JPG, WEBP, MP4, WEBM, GIF до 10MB. Видео отображается первым.
                   </p>
                 </div>
 
                 {formData.images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-3">
-                    {formData.images.map((url, index) => (
-                      <div key={index} className="relative group aspect-square">
-                        <img
-                          src={url}
-                          alt={`Product ${index + 1}`}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => removeImage(url)}
-                          className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                        {index === 0 && (
-                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded">
-                            Главное
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {formData.images.map((url, index) => {
+                      const isVideoFile = isVideo(url);
+                      return (
+                        <div key={url} className="relative group aspect-square bg-muted rounded-lg overflow-hidden">
+                          {isVideoFile ? (
+                            <video
+                              src={url}
+                              className="w-full h-full object-cover"
+                              muted
+                              loop
+                              playsInline
+                              onMouseEnter={(e) => e.currentTarget.play()}
+                              onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                            />
+                          ) : (
+                            <img
+                              src={url}
+                              alt={`Product ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          
+                          {/* Media type badge */}
+                          <div className="absolute top-1 left-1">
+                            {isVideoFile ? (
+                              <span className="px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded flex items-center gap-1">
+                                <Video className="h-3 w-3" />
+                              </span>
+                            ) : null}
+                          </div>
+                          
+                          {/* Main badge */}
+                          {index === 0 && (
+                            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded flex items-center gap-1">
+                              <Star className="h-3 w-3" />
+                              Главное
+                            </span>
+                          )}
+                          
+                          {/* Action buttons */}
+                          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {index !== 0 && (
+                              <button
+                                onClick={() => setAsMain(url)}
+                                className="p-1 rounded-full bg-primary text-primary-foreground"
+                                title="Сделать главным"
+                              >
+                                <Star className="h-3 w-3" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => removeMedia(url)}
+                              className="p-1 rounded-full bg-destructive text-destructive-foreground"
+                              title="Удалить"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                          
+                          {/* Drag handle - visual indicator */}
+                          <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => index > 0 && moveMedia(index, index - 1)}
+                              className="p-1 rounded-full bg-background/80 text-muted-foreground"
+                              title="Переместить вверх"
+                            >
+                              <GripVertical className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
                 {formData.images.length === 0 && (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <ImageIcon className="h-8 w-8 mr-2" />
-                    <span className="text-sm">Нет загруженных изображений</span>
+                    <span className="text-sm">Нет загруженных медиафайлов</span>
                   </div>
                 )}
               </CardContent>

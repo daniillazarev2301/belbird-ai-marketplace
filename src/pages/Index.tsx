@@ -76,9 +76,6 @@ const Index = () => {
         <main className="flex-1">
           <HeroSection />
           {features?.show_stories !== false && <StoriesSection />}
-          <BenefitsSection />
-          {features?.show_ai_recommendations !== false && <AIRecommendations />}
-          <CategorySection />
           <FeaturedProducts />
           {features?.show_promo_banner !== false && <PromoSection />}
         </main>
