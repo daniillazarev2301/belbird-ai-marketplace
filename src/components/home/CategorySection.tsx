@@ -1,31 +1,36 @@
-import { ArrowRight, Dog, Cat, Bird, Fish, Rabbit, Egg } from "lucide-react";
+import { ArrowRight, Folder } from "lucide-react";
 import { Link } from "react-router-dom";
-import categoryPets from "@/assets/category-pets.jpg";
-import categoryHome from "@/assets/category-home.jpg";
-import categoryGarden from "@/assets/category-garden.jpg";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CategoryCardProps {
   title: string;
   description: string;
   image: string;
-  icon: React.ReactNode;
   href: string;
   itemCount: number;
   size?: "large" | "small";
 }
 
-const CategoryCard = ({ title, description, image, icon, href, itemCount, size = "large" }: CategoryCardProps) => (
+const CategoryCard = ({ title, description, image, href, itemCount, size = "large" }: CategoryCardProps) => (
   <Link
     to={href}
     className="group relative overflow-hidden rounded-2xl bg-card shadow-card hover:shadow-elevated transition-all duration-300"
   >
     {/* Image */}
     <div className={size === "large" ? "aspect-[4/5] md:aspect-[3/4]" : "aspect-[4/3]"}>
-      <img
-        src={image}
-        alt={title}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-      />
+      {image ? (
+        <img
+          src={image}
+          alt={title}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+      ) : (
+        <div className="w-full h-full bg-muted flex items-center justify-center">
+          <Folder className="h-12 w-12 text-muted-foreground" />
+        </div>
+      )}
     </div>
 
     {/* Overlay */}
@@ -34,19 +39,18 @@ const CategoryCard = ({ title, description, image, icon, href, itemCount, size =
     {/* Content */}
     <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
       <div className="flex items-center gap-2 mb-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary-foreground backdrop-blur-sm">
-          {icon}
-        </div>
         <span className="text-xs font-medium text-primary-foreground/80">
-          {itemCount.toLocaleString()} товаров
+          {itemCount} товаров
         </span>
       </div>
       <h3 className={`${size === "large" ? "text-xl md:text-2xl" : "text-lg"} font-serif font-semibold text-primary-foreground mb-1`}>
         {title}
       </h3>
-      <p className="text-sm text-primary-foreground/70 mb-2 line-clamp-2">
-        {description}
-      </p>
+      {description && (
+        <p className="text-sm text-primary-foreground/70 mb-2 line-clamp-2">
+          {description}
+        </p>
+      )}
       <div className="flex items-center gap-2 text-sm font-medium text-primary-foreground group-hover:gap-3 transition-all">
         <span>Смотреть</span>
         <ArrowRight className="h-4 w-4" />
@@ -56,59 +60,65 @@ const CategoryCard = ({ title, description, image, icon, href, itemCount, size =
 );
 
 const CategorySection = () => {
-  const mainCategories = [
-    {
-      title: "Собаки",
-      description: "Корма, лакомства, игрушки, амуниция и ветпрепараты",
-      image: categoryPets,
-      icon: <Dog className="h-4 w-4" />,
-      href: "/catalog/dogs",
-      itemCount: 8420,
-    },
-    {
-      title: "Кошки",
-      description: "Корма, наполнители, когтеточки и аксессуары",
-      image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&h=800&fit=crop",
-      icon: <Cat className="h-4 w-4" />,
-      href: "/catalog/cats",
-      itemCount: 6150,
-    },
-    {
-      title: "Птицы и попугаи",
-      description: "Корма, клетки, игрушки для попугаев и канареек",
-      image: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=600&h=800&fit=crop",
-      icon: <Bird className="h-4 w-4" />,
-      href: "/catalog/birds",
-      itemCount: 3890,
-    },
-  ];
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ["home-categories"],
+    queryFn: async () => {
+      // Get categories
+      const { data: cats, error } = await supabase
+        .from("categories")
+        .select("id, name, slug, description, image_url, parent_id")
+        .is("parent_id", null)
+        .order("sort_order", { ascending: true });
 
-  const secondaryCategories = [
-    {
-      title: "Грызуны",
-      description: "Хомяки, кролики, морские свинки",
-      image: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=400&h=300&fit=crop",
-      icon: <Rabbit className="h-4 w-4" />,
-      href: "/catalog/rodents",
-      itemCount: 2340,
+      if (error) throw error;
+
+      // Get product counts
+      const { data: products } = await supabase
+        .from("products")
+        .select("category_id")
+        .eq("is_active", true);
+
+      const countMap: Record<string, number> = {};
+      products?.forEach((p) => {
+        if (p.category_id) {
+          countMap[p.category_id] = (countMap[p.category_id] || 0) + 1;
+        }
+      });
+
+      return (cats || []).map((cat) => ({
+        id: cat.id,
+        title: cat.name,
+        description: cat.description || "",
+        image: cat.image_url || "",
+        href: `/catalog/${cat.slug}`,
+        itemCount: countMap[cat.id] || 0,
+      }));
     },
-    {
-      title: "Рыбки и аквариумы",
-      description: "Корма, аквариумы, оборудование",
-      image: "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=400&h=300&fit=crop",
-      icon: <Fish className="h-4 w-4" />,
-      href: "/catalog/fish",
-      itemCount: 4120,
-    },
-    {
-      title: "Сельхоз животные",
-      description: "Корма для кур, цыплят, уток и других",
-      image: categoryGarden,
-      icon: <Egg className="h-4 w-4" />,
-      href: "/catalog/farm",
-      itemCount: 5670,
-    },
-  ];
+  });
+
+  if (isLoading) {
+    return (
+      <section className="py-12 md:py-16 lg:py-20">
+        <div className="container px-4 md:px-6">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-5 w-64 mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (categories.length === 0) {
+    return null;
+  }
+
+  // Split categories into main (first 3) and secondary (rest)
+  const mainCategories = categories.slice(0, 3);
+  const secondaryCategories = categories.slice(3, 6);
 
   return (
     <section className="py-12 md:py-16 lg:py-20">
@@ -117,10 +127,10 @@ const CategorySection = () => {
         <div className="flex items-end justify-between mb-8 md:mb-10">
           <div>
             <h2 className="text-2xl md:text-3xl font-serif font-semibold mb-2">
-              Категории животных
+              Категории
             </h2>
             <p className="text-muted-foreground">
-              Товары для домашних и сельскохозяйственных питомцев
+              Выберите интересующую категорию товаров
             </p>
           </div>
           <Link
@@ -133,18 +143,22 @@ const CategorySection = () => {
         </div>
 
         {/* Main Categories Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
-          {mainCategories.map((category) => (
-            <CategoryCard key={category.href} {...category} size="large" />
-          ))}
-        </div>
+        {mainCategories.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+            {mainCategories.map((category) => (
+              <CategoryCard key={category.id} {...category} size="large" />
+            ))}
+          </div>
+        )}
 
         {/* Secondary Categories Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-          {secondaryCategories.map((category) => (
-            <CategoryCard key={category.href} {...category} size="small" />
-          ))}
-        </div>
+        {secondaryCategories.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            {secondaryCategories.map((category) => (
+              <CategoryCard key={category.id} {...category} size="small" />
+            ))}
+          </div>
+        )}
 
         {/* Mobile link */}
         <Link

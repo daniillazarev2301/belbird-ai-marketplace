@@ -1,94 +1,70 @@
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import ProductCard, { Product } from "./ProductCard";
-
-const featuredProducts: Product[] = [
-  {
-    id: "1",
-    name: "Премиум корм для собак Royal Canin Medium Adult",
-    price: 4290,
-    oldPrice: 4890,
-    image: "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=400&h=400&fit=crop",
-    rating: 4.9,
-    reviewCount: 2341,
-    category: "Корма для собак",
-    isBestseller: true,
-    aiRecommended: true,
-  },
-  {
-    id: "2",
-    name: "Корм для кошек Whiskas с курицей",
-    price: 1490,
-    image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop",
-    rating: 4.8,
-    reviewCount: 856,
-    category: "Корма для кошек",
-    isNew: true,
-  },
-  {
-    id: "3",
-    name: "Комбикорм для цыплят стартовый ПК-2",
-    price: 890,
-    oldPrice: 1090,
-    image: "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=400&h=400&fit=crop",
-    rating: 4.7,
-    reviewCount: 423,
-    category: "Сельхоз животные",
-    isBestseller: true,
-  },
-  {
-    id: "4",
-    name: "Клетка для попугая с аксессуарами",
-    price: 4990,
-    image: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=400&h=400&fit=crop",
-    rating: 4.9,
-    reviewCount: 1205,
-    category: "Птицы и попугаи",
-    aiRecommended: true,
-  },
-  {
-    id: "5",
-    name: "Аквариум Tetra 60л с фильтром",
-    price: 5890,
-    image: "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=400&h=400&fit=crop",
-    rating: 4.6,
-    reviewCount: 678,
-    category: "Аквариумистика",
-    isNew: true,
-  },
-  {
-    id: "6",
-    name: "Корм для кур-несушек ПК-1",
-    price: 1290,
-    oldPrice: 1590,
-    image: "https://images.unsplash.com/photo-1569127959161-2b1297b2d9a6?w=400&h=400&fit=crop",
-    rating: 4.8,
-    reviewCount: 932,
-    category: "Сельхоз животные",
-    isBestseller: true,
-  },
-  {
-    id: "7",
-    name: "Домик-когтеточка для кошки",
-    price: 6490,
-    image: "https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=400&h=400&fit=crop",
-    rating: 4.7,
-    reviewCount: 567,
-    category: "Мебель для кошек",
-  },
-  {
-    id: "8",
-    name: "Корм для хомяков и морских свинок",
-    price: 590,
-    image: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=400&h=400&fit=crop",
-    rating: 4.9,
-    reviewCount: 1089,
-    category: "Грызуны",
-    aiRecommended: true,
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import ProductCard from "./ProductCard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const FeaturedProducts = () => {
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["featured-products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          id, name, slug, price, old_price, images, rating, review_count,
+          category:categories(name)
+        `)
+        .eq("is_active", true)
+        .order("review_count", { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      
+      return (data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        oldPrice: p.old_price || undefined,
+        image: p.images?.[0] || "/placeholder.svg",
+        rating: p.rating || 0,
+        reviewCount: p.review_count || 0,
+        category: p.category?.name || "",
+        slug: p.slug,
+        isBestseller: (p.review_count || 0) > 100,
+      }));
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <section className="py-12 md:py-16">
+        <div className="container px-4 md:px-6">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <Skeleton className="h-5 w-32 mb-2" />
+              <Skeleton className="h-8 w-48" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="aspect-square rounded-xl" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-6 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (products.length === 0) {
+    return null;
+  }
+
   return (
     <section className="py-12 md:py-16">
       <div className="container px-4 md:px-6">
@@ -116,7 +92,7 @@ const FeaturedProducts = () => {
 
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
-          {featuredProducts.map((product) => (
+          {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
