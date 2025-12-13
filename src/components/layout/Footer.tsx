@@ -1,13 +1,16 @@
-import { MapPin, Phone, Mail, Instagram, Send } from "lucide-react";
+import { Instagram, Send } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 const Footer = () => {
   const categories = [
-    { label: "Любимцы", href: "/pets" },
-    { label: "Уют и Дом", href: "/home" },
-    { label: "Сад и Огород", href: "/garden" },
-    { label: "Акции", href: "/sales" },
+    { label: "Собаки", href: "/catalog/dogs" },
+    { label: "Кошки", href: "/catalog/cats" },
+    { label: "Птицы", href: "/catalog/birds" },
+    { label: "Грызуны", href: "/catalog/rodents" },
+    { label: "Рыбки", href: "/catalog/fish" },
+    { label: "Сельхоз", href: "/catalog/farm" },
   ];
 
   const support = [
@@ -30,24 +33,28 @@ const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <a href="/" className="flex items-center gap-2 mb-4">
+            <Link to="/" className="flex items-center gap-2 mb-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                 <span className="text-lg font-bold text-primary-foreground">B</span>
               </div>
               <span className="font-serif text-xl font-semibold">BelBird</span>
-            </a>
+            </Link>
             <p className="text-sm text-muted-foreground mb-4">
-              Премиальный маркетплейс для ваших любимцев, дома и сада
+              Зоотовары для домашних и сельскохозяйственных животных
             </p>
             <div className="flex gap-3">
               <a
-                href="#"
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <Instagram className="h-4 w-4" />
               </a>
               <a
-                href="#"
+                href="https://t.me/belbird"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <Send className="h-4 w-4" />
@@ -61,12 +68,12 @@ const Footer = () => {
             <ul className="space-y-2">
               {categories.map((item) => (
                 <li key={item.href}>
-                  <a
-                    href={item.href}
+                  <Link
+                    to={item.href}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -78,12 +85,12 @@ const Footer = () => {
             <ul className="space-y-2">
               {support.map((item) => (
                 <li key={item.href}>
-                  <a
-                    href={item.href}
+                  <Link
+                    to={item.href}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -95,12 +102,12 @@ const Footer = () => {
             <ul className="space-y-2">
               {company.map((item) => (
                 <li key={item.href}>
-                  <a
-                    href={item.href}
+                  <Link
+                    to={item.href}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -128,15 +135,15 @@ const Footer = () => {
         {/* Bottom */}
         <div className="mt-12 pt-6 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <a href="/privacy" className="hover:text-primary transition-colors">
+            <Link to="/privacy" className="hover:text-primary transition-colors">
               Политика конфиденциальности
-            </a>
-            <a href="/terms" className="hover:text-primary transition-colors">
+            </Link>
+            <Link to="/terms" className="hover:text-primary transition-colors">
               Условия использования
-            </a>
+            </Link>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2024 BelBird. Все права защищены.
+            © {new Date().getFullYear()} BelBird. Все права защищены.
           </p>
         </div>
       </div>

@@ -12,6 +12,7 @@ import Search from "./pages/Search";
 import Product from "./pages/Product";
 import Auth from "./pages/Auth";
 import Catalog from "./pages/Catalog";
+import StaticPage from "./pages/StaticPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminProductEdit from "./pages/admin/AdminProductEdit";
@@ -22,6 +23,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminMedia from "./pages/admin/AdminMedia";
 import AdminCategories from "./pages/admin/AdminCategories";
+import AdminPages from "./pages/admin/AdminPages";
 import AccountProfile from "./pages/account/AccountProfile";
 import AccountOrders from "./pages/account/AccountOrders";
 import AccountPets from "./pages/account/AccountPets";
@@ -48,6 +50,19 @@ const App = () => (
             <Route path="/cart" element={<Cart />} />
             <Route path="/product/:id" element={<Product />} />
             <Route path="/checkout" element={<Checkout />} />
+            
+            {/* Static Pages */}
+            <Route path="/about" element={<StaticPage />} />
+            <Route path="/privacy" element={<StaticPage />} />
+            <Route path="/terms" element={<StaticPage />} />
+            <Route path="/delivery" element={<StaticPage />} />
+            <Route path="/returns" element={<StaticPage />} />
+            <Route path="/faq" element={<StaticPage />} />
+            <Route path="/contacts" element={<StaticPage />} />
+            <Route path="/blog" element={<StaticPage />} />
+            <Route path="/careers" element={<StaticPage />} />
+            <Route path="/partners" element={<StaticPage />} />
+            
             {/* Account */}
             <Route path="/account" element={<AccountProfile />} />
             <Route path="/account/orders" element={<AccountOrders />} />
@@ -56,6 +71,7 @@ const App = () => (
             <Route path="/account/subscriptions" element={<AccountSubscriptions />} />
             <Route path="/account/loyalty" element={<AccountLoyalty />} />
             <Route path="/account/settings" element={<AccountSettings />} />
+            
             {/* Admin */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
@@ -64,9 +80,11 @@ const App = () => (
             <Route path="/admin/ai-content" element={<AdminAIContent />} />
             <Route path="/admin/media" element={<AdminMedia />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
+            <Route path="/admin/pages" element={<AdminPages />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/customers" element={<AdminCustomers />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
