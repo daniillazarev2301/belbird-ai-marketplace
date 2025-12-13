@@ -65,6 +65,11 @@ const AdminReviews = () => {
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [reviewCount, setReviewCount] = useState("5");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [minRating, setMinRating] = useState("3");
+  const [maxRating, setMaxRating] = useState("5");
+  const [reviewTone, setReviewTone] = useState("mixed");
+  const [includePhotos, setIncludePhotos] = useState(false);
+  const [detailLevel, setDetailLevel] = useState("medium");
 
   const { data: reviews = [], isLoading, refetch } = useQuery({
     queryKey: ["admin-reviews", statusFilter, searchQuery],
@@ -159,6 +164,10 @@ const AdminReviews = () => {
           productId: selectedProduct,
           productName: product.name,
           count: parseInt(reviewCount),
+          minRating: parseInt(minRating),
+          maxRating: parseInt(maxRating),
+          tone: reviewTone,
+          detailLevel: detailLevel,
         },
       });
 
@@ -457,15 +466,86 @@ const AdminReviews = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="1">1 отзыв</SelectItem>
                     <SelectItem value="3">3 отзыва</SelectItem>
                     <SelectItem value="5">5 отзывов</SelectItem>
                     <SelectItem value="10">10 отзывов</SelectItem>
+                    <SelectItem value="15">15 отзывов</SelectItem>
+                    <SelectItem value="20">20 отзывов</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <p className="text-sm text-muted-foreground">
-                AI сгенерирует реалистичные отзывы на русском языке с разными оценками и текстами
-              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Мин. рейтинг</Label>
+                  <Select value={minRating} onValueChange={setMinRating}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 звезда</SelectItem>
+                      <SelectItem value="2">2 звезды</SelectItem>
+                      <SelectItem value="3">3 звезды</SelectItem>
+                      <SelectItem value="4">4 звезды</SelectItem>
+                      <SelectItem value="5">5 звёзд</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Макс. рейтинг</Label>
+                  <Select value={maxRating} onValueChange={setMaxRating}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 звезда</SelectItem>
+                      <SelectItem value="2">2 звезды</SelectItem>
+                      <SelectItem value="3">3 звезды</SelectItem>
+                      <SelectItem value="4">4 звезды</SelectItem>
+                      <SelectItem value="5">5 звёзд</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Тональность отзывов</Label>
+                <Select value={reviewTone} onValueChange={setReviewTone}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="positive">Только положительные</SelectItem>
+                    <SelectItem value="mixed">Смешанные (реалистичные)</SelectItem>
+                    <SelectItem value="critical">С критикой</SelectItem>
+                    <SelectItem value="enthusiastic">Восторженные</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Детализация отзывов</Label>
+                <Select value={detailLevel} onValueChange={setDetailLevel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="short">Короткие (1-2 предложения)</SelectItem>
+                    <SelectItem value="medium">Средние (3-5 предложений)</SelectItem>
+                    <SelectItem value="detailed">Развёрнутые (6+ предложений)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                <p className="font-medium mb-1">💡 Рекомендации:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Для нового товара: 5-10 смешанных отзывов</li>
+                  <li>Рейтинг 3-5 выглядит естественнее</li>
+                  <li>Средняя детализация — оптимальный баланс</li>
+                </ul>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
