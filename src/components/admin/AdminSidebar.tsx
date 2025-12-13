@@ -42,9 +42,13 @@ const mainNavItems = [
 
 const catalogItems = [
   { title: "Все товары", url: "/admin/products", icon: Package },
+  { title: "Категории", url: "/admin/categories", icon: Tags },
   { title: "AI-Контент", url: "/admin/ai-content", icon: Sparkles },
   { title: "Медиа-центр", url: "/admin/media", icon: Image },
-  { title: "Категории", url: "/admin/categories", icon: Tags },
+];
+
+const contentItems = [
+  { title: "Страницы", url: "/admin/pages", icon: FileText },
 ];
 
 const salesItems = [
@@ -113,6 +117,38 @@ export function AdminSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {catalogItems.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink 
+                          to={item.url} 
+                          className="hover:bg-accent" 
+                          activeClassName="bg-accent text-accent-foreground font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        {/* Content */}
+        <SidebarGroup>
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between">
+                Контент
+                <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {contentItems.map((item) => (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton asChild tooltip={item.title}>
                         <NavLink 
