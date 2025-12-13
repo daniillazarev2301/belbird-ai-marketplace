@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.generate-category-content]
 verify_jwt = false
 
+[functions.generate-blog-content]
+verify_jwt = false
+
 [functions.alfa-bank-payment]
 verify_jwt = false
 
