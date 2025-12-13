@@ -1,23 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Filter, Grid3X3, List, Star, Heart, ShoppingCart, SlidersHorizontal, X, Folder } from "lucide-react";
+import { Filter, Grid3X3, List, Star, Heart, ShoppingCart, SlidersHorizontal, Folder } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/contexts/CartContext";
+import { ModernFilters } from "@/components/catalog/ModernFilters";
 
 interface Product {
   id: string;
@@ -182,71 +179,18 @@ const Catalog = () => {
   };
 
   const FilterContent = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="font-medium mb-4">Цена</h3>
-        <Slider
-          value={priceRange}
-          onValueChange={setPriceRange}
-          max={50000}
-          step={500}
-          className="mb-2"
-        />
-        <div className="flex justify-between text-sm text-muted-foreground">
-          <span>{priceRange[0].toLocaleString()} ₽</span>
-          <span>{priceRange[1].toLocaleString()} ₽</span>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <h3 className="font-medium mb-4">Бренд</h3>
-        <div className="space-y-3">
-          {brands.map(brand => (
-            <div key={brand.id} className="flex items-center gap-2">
-              <Checkbox
-                id={brand.id}
-                checked={selectedBrands.includes(brand.name)}
-                onCheckedChange={() => toggleBrand(brand.name)}
-              />
-              <Label htmlFor={brand.id} className="font-normal cursor-pointer">{brand.name}</Label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <h3 className="font-medium mb-4">Рейтинг</h3>
-        <div className="space-y-3">
-          {[4, 3, 2, 1].map(rating => (
-            <div key={rating} className="flex items-center gap-2">
-              <Checkbox
-                id={`rating-${rating}`}
-                checked={minRating === rating}
-                onCheckedChange={() => setMinRating(minRating === rating ? 0 : rating)}
-              />
-              <Label htmlFor={`rating-${rating}`} className="font-normal cursor-pointer flex items-center gap-1">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                от {rating}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {activeFiltersCount > 0 && (
-        <>
-          <Separator />
-          <Button variant="outline" className="w-full" onClick={clearFilters}>
-            <X className="h-4 w-4 mr-2" />
-            Сбросить фильтры
-          </Button>
-        </>
-      )}
-    </div>
+    <ModernFilters
+      brands={brands}
+      selectedBrands={selectedBrands}
+      onBrandToggle={toggleBrand}
+      priceRange={priceRange}
+      onPriceChange={setPriceRange}
+      minRating={minRating}
+      onRatingChange={setMinRating}
+      onClearFilters={clearFilters}
+      activeFiltersCount={activeFiltersCount}
+      maxPrice={50000}
+    />
   );
 
   return (
