@@ -12,6 +12,7 @@ import {
   Gift,
   Settings,
   LogOut,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,7 @@ const navItems = [
   { icon: User, label: "Профиль", href: "/account" },
   { icon: ShoppingBag, label: "Заказы", href: "/account/orders" },
   { icon: Heart, label: "Избранное", href: "/account/favorites" },
+  { icon: MapPin, label: "Адреса", href: "/account/addresses" },
   { icon: PawPrint, label: "Мои питомцы", href: "/account/pets" },
   { icon: RefreshCw, label: "Подписки", href: "/account/subscriptions" },
   { icon: Gift, label: "Бонусы", href: "/account/loyalty" },
