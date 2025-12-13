@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, Truck, Shield, RotateCcw, 
-  Star, MessageSquare, Plus, Minus, Check, Clock, ArrowLeft, Package, RefreshCw, Box
+  Star, MessageSquare, Plus, Minus, Check, Clock, ArrowLeft, Package, RefreshCw, Box,
+  ChevronDown, FileText
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -515,65 +517,166 @@ const Product = () => {
             </div>
 
             {/* Center-Right: Product Info */}
-            <div className="lg:col-span-3 space-y-5">
-              <div>
-                <h1 className="text-xl lg:text-2xl font-bold mb-2">{product.name}</h1>
-                
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{product.rating || 0}</span>
-                  </div>
-                  <span className="text-muted-foreground">• {product.review_count || 0} отзывов</span>
+            <div className="lg:col-span-3 space-y-4">
+              {/* Brand Badge */}
+              {product.brand && (
+                <Link 
+                  to={`/catalog?brand=${product.brand.name}`} 
+                  className="inline-block text-xs text-primary hover:underline bg-primary/10 px-2 py-1 rounded"
+                >
+                  {product.brand.name}
+                </Link>
+              )}
+
+              {/* Title */}
+              <h1 className="text-lg lg:text-xl font-bold leading-tight">{product.name}</h1>
+              
+              {/* Rating */}
+              <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span className="font-medium">{product.rating || 0}</span>
                 </div>
+                <span className="text-muted-foreground">• {product.review_count || 0} отзывов</span>
               </div>
 
-              {/* Specifications Table */}
-              {(Object.keys(specifications).length > 0 || product.sku) && (
-                <div className="space-y-2">
-                  {product.sku && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground w-40">Артикул</span>
-                      <span className="font-mono">{product.sku}</span>
-                    </div>
-                  )}
-                  {Object.entries(specifications).slice(0, 5).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground w-40">{key}</span>
-                      <span className="flex-1 border-b border-dotted border-border" />
-                      <span>{value}</span>
-                    </div>
-                  ))}
-                  {Object.keys(specifications).length > 5 && (
-                    <Button variant="link" size="sm" className="p-0 h-auto text-xs">
-                      Характеристики и описание
-                    </Button>
-                  )}
+              {/* Product Thumbnail (small) */}
+              {images[0] && (
+                <div className="w-20 h-20 rounded-lg border overflow-hidden bg-muted">
+                  <img 
+                    src={images[0]} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder.svg";
+                    }}
+                  />
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-sm">
-                <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                <span>14 дней на возврат</span>
+              {/* Specifications Table - WB Style */}
+              <div className="space-y-0">
+                {product.sku && (
+                  <div className="flex items-baseline gap-2 py-2 text-sm">
+                    <span className="text-muted-foreground shrink-0">Артикул</span>
+                    <span className="flex-1 border-b border-dotted border-muted-foreground/30" />
+                    <span className="font-medium shrink-0">{product.sku}</span>
+                  </div>
+                )}
+                {Object.entries(specifications).slice(0, 4).map(([key, value]) => (
+                  <div key={key} className="flex items-baseline gap-2 py-2 text-sm">
+                    <span className="text-muted-foreground shrink-0 max-w-[140px] truncate">{key}</span>
+                    <span className="flex-1 border-b border-dotted border-muted-foreground/30 min-w-[20px]" />
+                    <span className="shrink-0 max-w-[150px] text-right">{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Характеристики и описание - Sheet Button */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button className="flex items-center gap-2 text-sm py-3 border-t border-b w-full hover:bg-muted/50 transition-colors">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>Характеристики и описание</span>
+                    <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[85vh] overflow-auto">
+                  <SheetHeader className="pb-4 border-b">
+                    <SheetTitle className="text-xl">Характеристики и описание</SheetTitle>
+                  </SheetHeader>
+                  <div className="py-6 space-y-8">
+                    {/* All Specifications */}
+                    {Object.keys(specifications).length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-lg mb-4">Основная информация</h3>
+                        <div className="space-y-0">
+                          {product.sku && (
+                            <div className="flex items-baseline gap-2 py-3 text-sm border-b">
+                              <span className="text-muted-foreground shrink-0 min-w-[180px]">Артикул</span>
+                              <span className="flex-1 border-b border-dotted border-muted-foreground/30" />
+                              <span className="font-medium shrink-0">{product.sku}</span>
+                            </div>
+                          )}
+                          {Object.entries(specifications).map(([key, value]) => (
+                            <div key={key} className="flex items-baseline gap-2 py-3 text-sm border-b last:border-b-0">
+                              <span className="text-muted-foreground shrink-0 min-w-[180px]">{key}</span>
+                              <span className="flex-1 border-b border-dotted border-muted-foreground/30" />
+                              <span className="shrink-0 max-w-[250px] text-right">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    <div>
+                      <h3 className="font-semibold text-lg mb-4">Описание</h3>
+                      <div className="prose prose-sm max-w-none text-muted-foreground">
+                        <p className="whitespace-pre-line">{product.description || "Описание товара не указано."}</p>
+                      </div>
+                    </div>
+
+                    {/* Features */}
+                    {product.features?.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-lg mb-4">Особенности</h3>
+                        <ul className="space-y-2">
+                          {product.features.map((feature, index) => (
+                            <li key={index} className="flex items-start gap-2 text-sm">
+                              <span className="text-muted-foreground">—</span>
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sticky Bottom Bar */}
+                  <div className="sticky bottom-0 left-0 right-0 bg-background border-t p-4 flex items-center gap-4">
+                    <div>
+                      <span className="text-xl font-bold text-primary">{product.price.toLocaleString()} ₽</span>
+                      {product.old_price && (
+                        <span className="text-sm text-muted-foreground line-through ml-2">
+                          {product.old_price.toLocaleString()} ₽
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={addToCart}>
+                        Купить сейчас
+                      </Button>
+                      <Button className="flex-1" onClick={addToCart}>
+                        В корзину
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* Return Policy */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RotateCcw className="h-4 w-4" />
+                <span>Возврат через заявку</span>
               </div>
 
               {/* Brand & Category Links */}
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-4 pt-2 border-t">
                 {product.brand && (
-                  <Link to={`/catalog?brand=${product.brand.name}`} className="flex items-center gap-2 hover:text-primary">
-                    <Package className="h-4 w-4" />
+                  <Link to={`/catalog?brand=${product.brand.name}`} className="flex items-center gap-2 text-sm hover:text-primary">
+                    <Package className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-muted-foreground text-xs">Бренд</span>
-                      <p className="font-medium">{product.brand.name}</p>
+                      <p className="text-xs text-muted-foreground">В каталог бренда</p>
                     </div>
                   </Link>
                 )}
                 {product.category && (
-                  <Link to={`/catalog/${product.category.slug}`} className="flex items-center gap-2 hover:text-primary">
-                    <Package className="h-4 w-4" />
+                  <Link to={`/catalog/${product.category.slug}`} className="flex items-center gap-2 text-sm hover:text-primary">
+                    <Package className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <span className="text-muted-foreground text-xs">Категория</span>
-                      <p className="font-medium">{product.category.name}</p>
+                      <p className="text-xs text-muted-foreground">Все товары категории</p>
                     </div>
                   </Link>
                 )}
