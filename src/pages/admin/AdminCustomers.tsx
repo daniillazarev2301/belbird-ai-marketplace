@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -29,115 +30,236 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Search,
   Download,
   Mail,
   Phone,
-  MapPin,
-  ShoppingCart,
-  Heart,
-  Star,
-  PawPrint,
-  Home,
-  Flower2,
   Calendar,
   TrendingUp,
+  Plus,
+  Loader2,
+  RefreshCw,
+  Edit,
+  ShoppingCart,
+  UserPlus,
+  Key,
+  Save,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-const customers = [
-  {
-    id: "1",
-    name: "Анна Морозова",
-    email: "anna@mail.ru",
-    phone: "+7 999 123 45 67",
-    segment: "vip",
-    totalOrders: 28,
-    totalSpent: 156890,
-    lastOrder: "12.12.2024",
-    registeredAt: "15.03.2023",
-    category: "pets",
-    petProfile: { type: "Кошка", name: "Мурка", breed: "Британская", age: 3 },
-  },
-  {
-    id: "2",
-    name: "Иван Петров",
-    email: "ivan@gmail.com",
-    phone: "+7 916 555 12 34",
-    segment: "regular",
-    totalOrders: 12,
-    totalSpent: 45600,
-    lastOrder: "10.12.2024",
-    registeredAt: "20.06.2023",
-    category: "home",
-    petProfile: null,
-  },
-  {
-    id: "3",
-    name: "Мария Козлова",
-    email: "maria@yandex.ru",
-    phone: "+7 925 111 22 33",
-    segment: "new",
-    totalOrders: 2,
-    totalSpent: 5890,
-    lastOrder: "08.12.2024",
-    registeredAt: "01.12.2024",
-    category: "garden",
-    petProfile: null,
-  },
-  {
-    id: "4",
-    name: "Алексей Сидоров",
-    email: "alex@mail.ru",
-    phone: "+7 903 777 88 99",
-    segment: "regular",
-    totalOrders: 8,
-    totalSpent: 32450,
-    lastOrder: "05.12.2024",
-    registeredAt: "10.08.2023",
-    category: "pets",
-    petProfile: { type: "Собака", name: "Рекс", breed: "Лабрадор", age: 5 },
-  },
-  {
-    id: "5",
-    name: "Елена Волкова",
-    email: "elena@gmail.com",
-    phone: "+7 912 333 44 55",
-    segment: "vip",
-    totalOrders: 45,
-    totalSpent: 234500,
-    lastOrder: "11.12.2024",
-    registeredAt: "05.01.2023",
-    category: "home",
-    petProfile: { type: "Кошка", name: "Барсик", breed: "Мейн-кун", age: 2 },
-  },
-];
-
-const segmentConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  vip: { label: "VIP", variant: "default" },
-  regular: { label: "Постоянный", variant: "secondary" },
-  new: { label: "Новый", variant: "outline" },
-};
-
-const categoryConfig: Record<string, { label: string; icon: React.ElementType }> = {
-  pets: { label: "Любимцы", icon: PawPrint },
-  home: { label: "Дом", icon: Home },
-  garden: { label: "Сад", icon: Flower2 },
-};
+interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  customer_notes: string | null;
+  customer_tags: string[] | null;
+  loyalty_points: number | null;
+  created_at: string | null;
+  orders_count?: number;
+  total_spent?: number;
+  last_order_date?: string | null;
+}
 
 const AdminCustomers = () => {
-  const [selectedCustomer, setSelectedCustomer] = useState<typeof customers[0] | null>(null);
-  const [segmentFilter, setSegmentFilter] = useState("all");
+  const queryClient = useQueryClient();
+  const [selectedCustomer, setSelectedCustomer] = useState<Profile | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [resetPasswordEmail, setResetPasswordEmail] = useState("");
+
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    phone: "",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    full_name: "",
+    phone: "",
+    customer_notes: "",
+    customer_tags: "",
+    loyalty_points: 0,
+  });
+
+  // Fetch customers (profiles) with order stats
+  const { data: customers = [], isLoading, refetch } = useQuery({
+    queryKey: ["admin-customers", searchQuery],
+    queryFn: async () => {
+      let query = supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (searchQuery) {
+        query = query.or(`email.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`);
+      }
+
+      const { data: profiles, error } = await query;
+      if (error) throw error;
+
+      // Get order stats for each customer
+      const { data: orderStats } = await supabase
+        .from("orders")
+        .select("user_id, total_amount, created_at");
+
+      const statsMap: Record<string, { count: number; total: number; lastDate: string | null }> = {};
+      orderStats?.forEach((order) => {
+        if (order.user_id) {
+          if (!statsMap[order.user_id]) {
+            statsMap[order.user_id] = { count: 0, total: 0, lastDate: null };
+          }
+          statsMap[order.user_id].count++;
+          statsMap[order.user_id].total += Number(order.total_amount) || 0;
+          if (!statsMap[order.user_id].lastDate || order.created_at > statsMap[order.user_id].lastDate!) {
+            statsMap[order.user_id].lastDate = order.created_at;
+          }
+        }
+      });
+
+      return (profiles || []).map((profile) => ({
+        ...profile,
+        orders_count: statsMap[profile.id]?.count || 0,
+        total_spent: statsMap[profile.id]?.total || 0,
+        last_order_date: statsMap[profile.id]?.lastDate || null,
+      })) as Profile[];
+    },
+  });
+
+  // Create new customer
+  const createCustomer = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      // Create user in Supabase Auth using edge function would be needed for admin creation
+      // For now, we'll use signUp which requires email confirmation
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.full_name,
+          },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+      
+      if (authError) throw authError;
+      
+      // Update profile with additional data
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: data.full_name,
+            phone: data.phone,
+          })
+          .eq("id", authData.user.id);
+        
+        if (profileError) throw profileError;
+      }
+      
+      return authData;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-customers"] });
+      toast.success("Клиент создан. Письмо для подтверждения отправлено.");
+      setAddDialogOpen(false);
+      setFormData({ email: "", password: "", full_name: "", phone: "" });
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+
+  // Update customer profile
+  const updateCustomer = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof editFormData }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: data.full_name,
+          phone: data.phone,
+          customer_notes: data.customer_notes || null,
+          customer_tags: data.customer_tags ? data.customer_tags.split(",").map(t => t.trim()) : null,
+          loyalty_points: data.loyalty_points,
+        })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-customers"] });
+      toast.success("Данные клиента обновлены");
+      setEditDialogOpen(false);
+      setSelectedCustomer(null);
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+
+  // Send password reset
+  const sendPasswordReset = useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Письмо для сброса пароля отправлено");
+      setResetPasswordEmail("");
+    },
+    onError: (error: Error) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+
+  const openEditDialog = (customer: Profile) => {
+    setSelectedCustomer(customer);
+    setEditFormData({
+      full_name: customer.full_name || "",
+      phone: customer.phone || "",
+      customer_notes: customer.customer_notes || "",
+      customer_tags: customer.customer_tags?.join(", ") || "",
+      loyalty_points: customer.loyalty_points || 0,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const getSegment = (customer: Profile) => {
+    if ((customer.total_spent || 0) > 50000) return { label: "VIP", variant: "default" as const };
+    if ((customer.orders_count || 0) > 3) return { label: "Постоянный", variant: "secondary" as const };
+    return { label: "Новый", variant: "outline" as const };
+  };
 
   const stats = {
     total: customers.length,
-    vip: customers.filter((c) => c.segment === "vip").length,
-    new: customers.filter((c) => c.segment === "new").length,
+    vip: customers.filter((c) => (c.total_spent || 0) > 50000).length,
+    new: customers.filter((c) => {
+      const createdAt = new Date(c.created_at || 0);
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      return createdAt > monthAgo;
+    }).length,
   };
 
   return (
     <>
       <Helmet>
         <title>Клиенты — BelBird Admin</title>
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <AdminLayout title="Клиенты (CRM)" description="Управление клиентской базой">
         {/* Stats */}
@@ -156,7 +278,7 @@ const AdminCustomers = () => {
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-secondary/20">
-                <Star className="h-5 w-5 text-secondary" />
+                <ShoppingCart className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-semibold">{stats.vip}</p>
@@ -181,57 +303,59 @@ const AdminCustomers = () => {
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Поиск по имени, email, телефону..." className="pl-10" />
+            <Input 
+              placeholder="Поиск по имени, email, телефону..." 
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
-            <Select value={segmentFilter} onValueChange={setSegmentFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Сегмент" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все сегменты</SelectItem>
-                <SelectItem value="vip">VIP</SelectItem>
-                <SelectItem value="regular">Постоянные</SelectItem>
-                <SelectItem value="new">Новые</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Категория" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все категории</SelectItem>
-                <SelectItem value="pets">Любимцы</SelectItem>
-                <SelectItem value="home">Дом</SelectItem>
-                <SelectItem value="garden">Сад</SelectItem>
-              </SelectContent>
-            </Select>
+            <Button variant="outline" size="icon" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
             <Button variant="outline" className="gap-2">
               <Download className="h-4 w-4" />
               Экспорт
+            </Button>
+            <Button className="gap-2" onClick={() => setAddDialogOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Добавить клиента
             </Button>
           </div>
         </div>
 
         {/* Customers Table */}
         <div className="rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Клиент</TableHead>
-                <TableHead>Контакты</TableHead>
-                <TableHead>Сегмент</TableHead>
-                <TableHead>Профиль</TableHead>
-                <TableHead className="text-right">Заказов</TableHead>
-                <TableHead className="text-right">Сумма покупок</TableHead>
-                <TableHead>Посл. заказ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers
-                .filter((c) => segmentFilter === "all" || c.segment === segmentFilter)
-                .map((customer) => {
-                  const CategoryIcon = categoryConfig[customer.category].icon;
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : customers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground mb-4">Клиенты не найдены</p>
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить первого клиента
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Клиент</TableHead>
+                  <TableHead>Контакты</TableHead>
+                  <TableHead>Сегмент</TableHead>
+                  <TableHead className="text-right">Заказов</TableHead>
+                  <TableHead className="text-right">Сумма покупок</TableHead>
+                  <TableHead>Баллы</TableHead>
+                  <TableHead>Регистрация</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => {
+                  const segment = getSegment(customer);
                   return (
                     <TableRow
                       key={customer.id}
@@ -242,45 +366,54 @@ const AdminCustomers = () => {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
                             <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                              {customer.name.split(" ").map((n) => n[0]).join("")}
+                              {(customer.full_name || customer.email || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{customer.name}</span>
+                          <span className="font-medium">{customer.full_name || "Без имени"}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <p className="text-muted-foreground">{customer.email}</p>
-                          <p className="text-muted-foreground">{customer.phone}</p>
+                          <p className="text-muted-foreground">{customer.email || "—"}</p>
+                          <p className="text-muted-foreground">{customer.phone || "—"}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={segmentConfig[customer.segment].variant}>
-                          {segmentConfig[customer.segment].label}
+                        <Badge variant={segment.variant}>
+                          {segment.label}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <CategoryIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{categoryConfig[customer.category].label}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{customer.totalOrders}</TableCell>
+                      <TableCell className="text-right">{customer.orders_count || 0}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {customer.totalSpent.toLocaleString()} ₽
+                        {(customer.total_spent || 0).toLocaleString()} ₽
                       </TableCell>
+                      <TableCell>{customer.loyalty_points || 0}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {customer.lastOrder}
+                        {customer.created_at ? new Date(customer.created_at).toLocaleDateString("ru-RU") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(customer);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
                 })}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          )}
         </div>
 
         {/* Customer Detail Sheet */}
-        <Sheet open={!!selectedCustomer} onOpenChange={() => setSelectedCustomer(null)}>
+        <Sheet open={!!selectedCustomer && !editDialogOpen} onOpenChange={() => setSelectedCustomer(null)}>
           <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
             <SheetHeader>
               <SheetTitle>Профиль клиента</SheetTitle>
@@ -291,13 +424,13 @@ const AdminCustomers = () => {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
                     <AvatarFallback className="bg-primary/10 text-primary text-xl">
-                      {selectedCustomer.name.split(" ").map((n) => n[0]).join("")}
+                      {(selectedCustomer.full_name || selectedCustomer.email || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-lg font-semibold">{selectedCustomer.name}</h3>
-                    <Badge variant={segmentConfig[selectedCustomer.segment].variant}>
-                      {segmentConfig[selectedCustomer.segment].label}
+                    <h3 className="text-lg font-semibold">{selectedCustomer.full_name || "Без имени"}</h3>
+                    <Badge variant={getSegment(selectedCustomer).variant}>
+                      {getSegment(selectedCustomer).label}
                     </Badge>
                   </div>
                 </div>
@@ -310,15 +443,15 @@ const AdminCustomers = () => {
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedCustomer.email}</span>
+                      <span>{selectedCustomer.email || "Не указан"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedCustomer.phone}</span>
+                      <span>{selectedCustomer.phone || "Не указан"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>Регистрация: {selectedCustomer.registeredAt}</span>
+                      <span>Регистрация: {selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString("ru-RU") : "—"}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -328,65 +461,191 @@ const AdminCustomers = () => {
                   <Card>
                     <CardContent className="p-4 text-center">
                       <ShoppingCart className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                      <p className="text-2xl font-semibold">{selectedCustomer.totalOrders}</p>
+                      <p className="text-2xl font-semibold">{selectedCustomer.orders_count || 0}</p>
                       <p className="text-xs text-muted-foreground">заказов</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 text-center">
                       <TrendingUp className="h-5 w-5 mx-auto mb-1 text-primary" />
-                      <p className="text-2xl font-semibold">{(selectedCustomer.totalSpent / 1000).toFixed(0)}K</p>
+                      <p className="text-2xl font-semibold">{((selectedCustomer.total_spent || 0) / 1000).toFixed(0)}K</p>
                       <p className="text-xs text-muted-foreground">потрачено</p>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Pet Profile */}
-                {selectedCustomer.petProfile && (
+                {/* Tags */}
+                {selectedCustomer.customer_tags && selectedCustomer.customer_tags.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <PawPrint className="h-4 w-4" />
-                        Профиль питомца
-                      </CardTitle>
+                      <CardTitle className="text-sm">Теги</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Имя</p>
-                          <p className="font-medium">{selectedCustomer.petProfile.name}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Тип</p>
-                          <p className="font-medium">{selectedCustomer.petProfile.type}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Порода</p>
-                          <p className="font-medium">{selectedCustomer.petProfile.breed}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Возраст</p>
-                          <p className="font-medium">{selectedCustomer.petProfile.age} года</p>
-                        </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCustomer.customer_tags.map((tag, idx) => (
+                          <Badge key={idx} variant="outline">{tag}</Badge>
+                        ))}
                       </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Notes */}
+                {selectedCustomer.customer_notes && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Заметки</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{selectedCustomer.customer_notes}</p>
                     </CardContent>
                   </Card>
                 )}
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Button className="flex-1 gap-2">
-                    <Mail className="h-4 w-4" />
-                    Написать
+                  <Button className="flex-1 gap-2" onClick={() => openEditDialog(selectedCustomer)}>
+                    <Edit className="h-4 w-4" />
+                    Редактировать
                   </Button>
-                  <Button variant="outline" className="flex-1">
-                    История заказов
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 gap-2"
+                    onClick={() => {
+                      if (selectedCustomer.email) {
+                        setResetPasswordEmail(selectedCustomer.email);
+                        sendPasswordReset.mutate(selectedCustomer.email);
+                      }
+                    }}
+                    disabled={!selectedCustomer.email || sendPasswordReset.isPending}
+                  >
+                    <Key className="h-4 w-4" />
+                    Сбросить пароль
                   </Button>
                 </div>
               </div>
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Add Customer Dialog */}
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Добавить клиента</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Пароль *</Label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Минимум 6 символов"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Полное имя</Label>
+                <Input
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  placeholder="Иван Иванов"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Телефон</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+7 999 123 45 67"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={() => createCustomer.mutate(formData)} disabled={createCustomer.isPending}>
+                {createCustomer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Создать
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Customer Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Редактировать клиента</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Полное имя</Label>
+                <Input
+                  value={editFormData.full_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, full_name: e.target.value })}
+                  placeholder="Иван Иванов"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Телефон</Label>
+                <Input
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  placeholder="+7 999 123 45 67"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Баллы лояльности</Label>
+                <Input
+                  type="number"
+                  value={editFormData.loyalty_points}
+                  onChange={(e) => setEditFormData({ ...editFormData, loyalty_points: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Теги (через запятую)</Label>
+                <Input
+                  value={editFormData.customer_tags}
+                  onChange={(e) => setEditFormData({ ...editFormData, customer_tags: e.target.value })}
+                  placeholder="VIP, любитель кошек, скидка 10%"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Заметки</Label>
+                <Textarea
+                  value={editFormData.customer_notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, customer_notes: e.target.value })}
+                  placeholder="Заметки о клиенте..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button 
+                onClick={() => selectedCustomer && updateCustomer.mutate({ id: selectedCustomer.id, data: editFormData })} 
+                disabled={updateCustomer.isPending}
+              >
+                {updateCustomer.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Save className="h-4 w-4 mr-2" />
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </AdminLayout>
     </>
   );
