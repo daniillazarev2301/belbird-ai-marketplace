@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.delivery-calculate]
 verify_jwt = false
+
+[functions.pickup-points]
+verify_jwt = false
