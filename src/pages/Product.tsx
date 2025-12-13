@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, Truck, Shield, RotateCcw, 
   Star, MessageSquare, Plus, Minus, Check, Clock, ArrowLeft, Package, RefreshCw, Box,
@@ -244,6 +244,8 @@ const Product = () => {
     }
   };
 
+  const navigate = useNavigate();
+
   const addToCart = () => {
     if (!product) return;
     addItem({
@@ -259,6 +261,20 @@ const Product = () => {
       title: "Добавлено в корзину",
       description: `${product.name} (${quantity} шт.)`,
     });
+  };
+
+  const buyNow = () => {
+    if (!product) return;
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      oldPrice: product.old_price,
+      quantity: quantity,
+      image: product.images?.[0] || "/placeholder.svg",
+      slug: product.slug,
+    });
+    navigate("/checkout");
   };
 
   const toggleFavorite = async () => {
@@ -645,7 +661,7 @@ const Product = () => {
                       )}
                     </div>
                     <div className="flex-1 flex gap-2">
-                      <Button variant="outline" className="flex-1" onClick={addToCart}>
+                      <Button variant="outline" className="flex-1" onClick={buyNow}>
                         Купить сейчас
                       </Button>
                       <Button className="flex-1" onClick={addToCart}>
@@ -727,6 +743,8 @@ const Product = () => {
                     <Button 
                       variant="outline" 
                       className="w-full h-12 text-base font-medium"
+                      onClick={buyNow}
+                      disabled={product.stock_count === 0}
                     >
                       Купить сейчас
                     </Button>
