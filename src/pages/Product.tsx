@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, Truck, Shield, RotateCcw, 
-  Star, ThumbsUp, MessageSquare, Sparkles, Plus, Minus, Check, Clock
+  Star, MessageSquare, Sparkles, Plus, Minus, Check, Clock
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
+import { ReviewForm } from "@/components/product/ReviewForm";
+import { ReviewList } from "@/components/product/ReviewList";
 
 interface ProductData {
   id: string;
@@ -388,9 +389,13 @@ const Product = () => {
           </TabsContent>
 
           <TabsContent value="reviews" className="pt-6">
-            <div className="text-center py-8">
-              <ThumbsUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-muted-foreground">Отзывов пока нет. Будьте первым!</p>
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <ReviewList productId={product.id} />
+              </div>
+              <div>
+                <ReviewForm productId={product.id} />
+              </div>
             </div>
           </TabsContent>
         </Tabs>

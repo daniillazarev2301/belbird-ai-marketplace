@@ -11,7 +11,10 @@ import {
   Tags,
   ChevronDown,
   LogOut,
-  Globe
+  Globe,
+  MessageSquare,
+  BookOpen,
+  Truck
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -49,16 +52,19 @@ const catalogItems = [
 
 const contentItems = [
   { title: "Страницы", url: "/admin/pages", icon: FileText },
+  { title: "Блог", url: "/admin/blog", icon: BookOpen },
 ];
 
 const salesItems = [
   { title: "Заказы", url: "/admin/orders", icon: ShoppingCart },
   { title: "Промокоды", url: "/admin/promo-codes", icon: Tags },
   { title: "Клиенты (CRM)", url: "/admin/customers", icon: Users },
+  { title: "Отзывы", url: "/admin/reviews", icon: MessageSquare },
 ];
 
 const settingsItems = [
   { title: "Настройки сайта", url: "/admin/site-settings", icon: Globe },
+  { title: "Доставка", url: "/admin/delivery", icon: Truck },
   { title: "Роли и доступы", url: "/admin/settings", icon: Settings },
 ];
 
