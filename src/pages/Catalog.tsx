@@ -245,10 +245,11 @@ const Catalog = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pb-24 lg:pb-12">
+      {/* Add bottom padding for mobile filter bar */}
+      <main className="pb-[140px] md:pb-24 lg:pb-12">
         {/* Category Banner */}
         {currentCategory && (
-          <div className="relative h-32 md:h-48 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+          <div className="relative h-24 md:h-48 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
             {currentCategory.image_url ? (
               <img
                 src={currentCategory.image_url}
@@ -258,16 +259,16 @@ const Catalog = () => {
             ) : null}
             <div className="absolute inset-0 flex items-center">
               <div className="container mx-auto px-4">
-                <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <nav className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Link to="/" className="hover:text-foreground transition-colors">Главная</Link>
                   <span>/</span>
                   <Link to="/catalog" className="hover:text-foreground transition-colors">Каталог</Link>
                   <span>/</span>
                   <span className="text-foreground">{currentCategory.name}</span>
                 </nav>
-                <h1 className="text-2xl md:text-3xl font-bold">{currentCategory.name}</h1>
+                <h1 className="text-xl md:text-3xl font-bold">{currentCategory.name}</h1>
                 {currentCategory.description && (
-                  <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
+                  <p className="text-muted-foreground mt-1 max-w-2xl text-sm hidden md:block">
                     {currentCategory.description}
                   </p>
                 )}
@@ -276,10 +277,10 @@ const Catalog = () => {
           </div>
         )}
 
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-3 md:px-4 py-2 md:py-4">
           {/* Breadcrumb for catalog root */}
           {!currentCategory && (
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <nav className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mb-4">
               <Link to="/" className="hover:text-foreground">Главная</Link>
               <span>/</span>
               <span className="text-foreground">Каталог</span>
@@ -287,15 +288,17 @@ const Catalog = () => {
           )}
 
           {!currentCategory && (
-            <h1 className="text-2xl font-bold mb-4">Каталог</h1>
+            <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Каталог</h1>
           )}
 
           <div className="flex gap-6">
-            {/* Sidebar - Categories */}
-            <CatalogSidebar 
-              categories={categories} 
-              currentCategorySlug={category} 
-            />
+            {/* Sidebar - Categories (desktop only) */}
+            <div className="hidden lg:block">
+              <CatalogSidebar 
+                categories={categories} 
+                currentCategorySlug={category} 
+              />
+            </div>
 
             {/* Main Content */}
             <div className="flex-1 min-w-0">
@@ -319,14 +322,9 @@ const Catalog = () => {
                 totalProducts={filteredProducts.length}
               />
 
-              {/* Products Count */}
-              <p className="text-sm text-muted-foreground py-3">
-                {filteredProducts.length} товаров
-              </p>
-
               {/* Products Grid */}
               {loadingProducts ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4">
                   {[...Array(8)].map((_, i) => (
                     <Card key={i}>
                       <CardContent className="p-3">
@@ -341,66 +339,69 @@ const Catalog = () => {
                 </div>
               ) : filteredProducts.length > 0 ? (
                 <div className={viewMode === "grid" 
-                  ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4" 
-                  : "space-y-4"
+                  ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4" 
+                  : "space-y-3"
                 }>
                   {filteredProducts.map((product, index) => (
                     <Card 
                       key={product.id} 
-                      className="group cursor-pointer hover:shadow-lg transition-all duration-300 animate-fade-in"
+                      className="group cursor-pointer hover:shadow-lg transition-all duration-300 animate-fade-in overflow-hidden"
                       style={{ animationDelay: `${index * 30}ms` }}
                     >
-                      <CardContent className="p-3">
-                        <div className="relative aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
+                      <CardContent className="p-2 md:p-3">
+                        <div className="relative aspect-square rounded-lg bg-muted mb-2 md:mb-3 overflow-hidden">
                           <Link to={`/product/${product.slug}`}>
                             <img 
                               src={product.images?.[0] || "/placeholder.svg"} 
                               alt={product.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              loading="lazy"
                             />
                           </Link>
                           {product.old_price && (
-                            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">
+                            <Badge className="absolute top-1.5 left-1.5 md:top-2 md:left-2 bg-destructive text-destructive-foreground text-[10px] md:text-xs px-1.5 md:px-2">
                               -{Math.round((1 - product.price / product.old_price) * 100)}%
                             </Badge>
                           )}
                           {product.stock_count === 0 && (
                             <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                              <span className="text-sm font-medium">Нет в наличии</span>
+                              <span className="text-xs md:text-sm font-medium">Нет в наличии</span>
                             </div>
                           )}
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1.5 right-1.5 md:top-2 md:right-2 h-7 w-7 md:h-8 md:w-8 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                               e.preventDefault();
                               toggleFavorite(product.id);
                             }}
                           >
-                            <Heart className={`h-4 w-4 ${favorites.includes(product.id) ? 'fill-destructive text-destructive' : ''}`} />
+                            <Heart className={`h-3.5 w-3.5 md:h-4 md:w-4 ${favorites.includes(product.id) ? 'fill-destructive text-destructive' : ''}`} />
                           </Button>
                         </div>
                         
-                        <p className="text-xs text-muted-foreground mb-1">{product.brand?.name}</p>
+                        {product.brand?.name && (
+                          <p className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1 truncate">{product.brand.name}</p>
+                        )}
                         
                         <Link to={`/product/${product.slug}`}>
-                          <h3 className="font-medium line-clamp-2 mb-2 text-sm hover:text-primary transition-colors leading-tight">
+                          <h3 className="font-medium line-clamp-2 mb-1.5 md:mb-2 text-xs md:text-sm hover:text-primary transition-colors leading-tight">
                             {product.name}
                           </h3>
                         </Link>
                         
-                        <div className="flex items-center gap-1 mb-2">
-                          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-medium">{product.rating || 0}</span>
-                          <span className="text-xs text-muted-foreground">({product.review_count || 0})</span>
+                        <div className="flex items-center gap-1 mb-1.5 md:mb-2">
+                          <Star className="h-3 w-3 md:h-3.5 md:w-3.5 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs md:text-sm font-medium">{product.rating || 0}</span>
+                          <span className="text-[10px] md:text-xs text-muted-foreground">({product.review_count || 0})</span>
                         </div>
                         
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-bold">{product.price.toLocaleString()} ₽</span>
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="min-w-0">
+                            <span className="font-bold text-sm md:text-base">{product.price.toLocaleString()} ₽</span>
                             {product.old_price && (
-                              <span className="text-xs text-muted-foreground line-through ml-2">
+                              <span className="text-[10px] md:text-xs text-muted-foreground line-through ml-1 md:ml-2 block md:inline">
                                 {product.old_price.toLocaleString()} ₽
                               </span>
                             )}
@@ -408,11 +409,11 @@ const Catalog = () => {
                           <Button
                             size="icon"
                             variant="outline"
-                            className="h-8 w-8"
+                            className="h-7 w-7 md:h-8 md:w-8 shrink-0"
                             disabled={product.stock_count === 0}
                             onClick={() => addToCart(product)}
                           >
-                            <ShoppingCart className="h-4 w-4" />
+                            <ShoppingCart className="h-3.5 w-3.5 md:h-4 md:w-4" />
                           </Button>
                         </div>
                       </CardContent>
