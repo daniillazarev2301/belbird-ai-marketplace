@@ -19,7 +19,9 @@ import {
   PlayCircle,
   FlaskConical,
   Bell,
-  ChevronUp
+  ChevronUp,
+  Activity,
+  User
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -85,6 +87,7 @@ const settingsItems = [
   { title: "Доставка", url: "/admin/delivery", icon: Truck },
   { title: "Push-рассылки", url: "/admin/push-notifications", icon: Bell },
   { title: "A/B Тесты", url: "/admin/ab-tests", icon: FlaskConical },
+  { title: "Журнал активности", url: "/admin/activity-log", icon: Activity },
   { title: "Роли и доступы", url: "/admin/settings", icon: Settings },
 ];
 
@@ -322,6 +325,12 @@ export function AdminSidebar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <a href="/admin/profile" className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Мой профиль
+              </a>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a href="/" className="cursor-pointer">
                 <Globe className="mr-2 h-4 w-4" />
