@@ -32,6 +32,79 @@ interface RichContentBlock {
   items?: string[];
 }
 
+// Product Image component with nice fallback
+const ProductImage = ({ src, alt }: { src: string; alt: string }) => {
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/60">
+      {loading && !error && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
+      {error ? (
+        <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+          <div className="w-24 h-24 rounded-2xl bg-muted/80 flex items-center justify-center">
+            <Package className="h-12 w-12" />
+          </div>
+          <span className="text-sm">Изображение недоступно</span>
+        </div>
+      ) : (
+        <img 
+          src={src} 
+          alt={alt}
+          className={`w-full h-full object-contain p-6 transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
+          onError={() => setError(true)}
+          onLoad={() => setLoading(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Thumbnail button component with error handling
+const ThumbnailButton = ({ 
+  img, 
+  index, 
+  currentImage, 
+  productName, 
+  onClick 
+}: { 
+  img: string; 
+  index: number; 
+  currentImage: number; 
+  productName: string; 
+  onClick: () => void;
+}) => {
+  const [imgError, setImgError] = useState(false);
+  
+  return (
+    <button
+      className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+        currentImage === index 
+          ? "border-primary ring-2 ring-primary/20 shadow-md" 
+          : "border-border hover:border-primary/50 hover:shadow-sm"
+      }`}
+      onClick={onClick}
+    >
+      {imgError ? (
+        <div className="w-full h-full bg-muted flex items-center justify-center">
+          <Package className="h-5 w-5 text-muted-foreground" />
+        </div>
+      ) : (
+        <img 
+          src={img} 
+          alt={`${productName} ${index + 1}`} 
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      )}
+    </button>
+  );
+};
+
 interface ProductData {
   id: string;
   name: string;
@@ -354,75 +427,57 @@ const Product = () => {
         </div>
 
         <div className="container mx-auto px-4 py-6">
-          <div className="grid lg:grid-cols-12 gap-6">
+          <div className="grid lg:grid-cols-12 gap-8">
             {/* Left: Thumbnails */}
-            <div className="hidden lg:flex lg:col-span-1 flex-col gap-2">
+            <div className="hidden lg:flex lg:col-span-1 flex-col gap-3">
               {images.map((img, index) => (
-                <button
+                <ThumbnailButton
                   key={index}
-                  className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all bg-muted/50 ${
-                    currentImage === index 
-                      ? "border-primary ring-2 ring-primary/20 shadow-md" 
-                      : "border-border hover:border-primary/50 hover:shadow-sm"
-                  }`}
+                  img={img}
+                  index={index}
+                  currentImage={currentImage}
+                  productName={product.name}
                   onClick={() => setCurrentImage(index)}
-                >
-                  <img 
-                    src={img} 
-                    alt={`${product.name} ${index + 1}`} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/placeholder.svg";
-                    }}
-                  />
-                </button>
+                />
               ))}
             </div>
 
             {/* Center: Main Image / 3D Viewer */}
-            <div className="lg:col-span-5">
-              <div className="relative aspect-square rounded-2xl bg-card border overflow-hidden sticky top-4 shadow-sm">
+            <div className="lg:col-span-6">
+              <div className="relative aspect-square rounded-2xl overflow-hidden sticky top-4 border bg-muted">
                 {show3DViewer && product.model_3d_url ? (
                   <Product3DViewer modelUrl={product.model_3d_url} productName={product.name} />
                 ) : (
                   <>
-                    {/* Image with fallback */}
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted/50 to-muted">
-                      <img 
-                        src={images[currentImage]} 
-                        alt={product.name}
-                        className="w-full h-full object-contain p-4"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/placeholder.svg";
-                        }}
-                      />
-                    </div>
+                    {/* Image with beautiful fallback */}
+                    <ProductImage 
+                      src={images[currentImage]} 
+                      alt={product.name}
+                    />
                     
                     {images.length > 1 && (
                       <>
                         <Button
                           variant="secondary"
                           size="icon"
-                          className="absolute left-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background border"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full shadow-lg bg-background/95 backdrop-blur-sm hover:bg-background border"
                           onClick={prevImage}
                         >
-                          <ChevronLeft className="h-6 w-6" />
+                          <ChevronLeft className="h-5 w-5" />
                         </Button>
                         <Button
                           variant="secondary"
                           size="icon"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background border"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full shadow-lg bg-background/95 backdrop-blur-sm hover:bg-background border"
                           onClick={nextImage}
                         >
-                          <ChevronRight className="h-6 w-6" />
+                          <ChevronRight className="h-5 w-5" />
                         </Button>
                       </>
                     )}
 
                     {discount > 0 && (
-                      <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-sm px-3 py-1 shadow-md">
+                      <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-sm px-3 py-1.5 shadow-md">
                         -{discount}%
                       </Badge>
                     )}
@@ -434,8 +489,8 @@ const Product = () => {
                           key={index}
                           className={`w-2.5 h-2.5 rounded-full transition-all shadow-sm ${
                             currentImage === index 
-                              ? "bg-primary scale-110" 
-                              : "bg-background/80 border border-border hover:bg-background"
+                              ? "bg-primary scale-125" 
+                              : "bg-background/90 border border-border"
                           }`}
                           onClick={() => setCurrentImage(index)}
                         />
@@ -460,7 +515,7 @@ const Product = () => {
             </div>
 
             {/* Center-Right: Product Info */}
-            <div className="lg:col-span-4 space-y-4">
+            <div className="lg:col-span-3 space-y-5">
               <div>
                 <h1 className="text-xl lg:text-2xl font-bold mb-2">{product.name}</h1>
                 
