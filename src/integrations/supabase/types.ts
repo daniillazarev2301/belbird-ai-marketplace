@@ -499,6 +499,7 @@ export type Database = {
           review_count: number | null
           sku: string | null
           slug: string
+          specifications: Json | null
           stock_count: number | null
           updated_at: string | null
         }
@@ -521,6 +522,7 @@ export type Database = {
           review_count?: number | null
           sku?: string | null
           slug: string
+          specifications?: Json | null
           stock_count?: number | null
           updated_at?: string | null
         }
@@ -543,6 +545,7 @@ export type Database = {
           review_count?: number | null
           sku?: string | null
           slug?: string
+          specifications?: Json | null
           stock_count?: number | null
           updated_at?: string | null
         }

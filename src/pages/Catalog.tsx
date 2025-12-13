@@ -1,20 +1,19 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Filter, Grid3X3, List, Star, Heart, ShoppingCart, SlidersHorizontal, Folder } from "lucide-react";
+import { Star, Heart, ShoppingCart, Folder } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/contexts/CartContext";
-import { ModernFilters } from "@/components/catalog/ModernFilters";
+import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
+import { HorizontalFilters } from "@/components/catalog/HorizontalFilters";
 
 interface Product {
   id: string;
@@ -28,6 +27,7 @@ interface Product {
   stock_count: number;
   brand?: { name: string };
   category?: { name: string; slug: string };
+  specifications?: Record<string, string>;
 }
 
 interface Brand {
@@ -43,6 +43,12 @@ interface Category {
   image_url: string | null;
 }
 
+interface SpecificationFilter {
+  key: string;
+  label: string;
+  values: string[];
+}
+
 const Catalog = () => {
   const { category } = useParams();
   const { toast } = useToast();
@@ -51,9 +57,21 @@ const Catalog = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState([0, 50000]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [minRating, setMinRating] = useState(0);
+  const [selectedSpecifications, setSelectedSpecifications] = useState<Record<string, string[]>>({});
   const [sortBy, setSortBy] = useState("popular");
   const [favorites, setFavorites] = useState<string[]>([]);
+
+  // Fetch all categories for sidebar
+  const { data: categories = [] } = useQuery({
+    queryKey: ["all-categories"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("id, name, slug, image_url")
+        .order("sort_order");
+      return (data || []) as Category[];
+    },
+  });
 
   // Fetch current category info
   const { data: currentCategory } = useQuery({
@@ -79,7 +97,7 @@ const Catalog = () => {
       let query = supabase
         .from("products")
         .select(`
-          id, name, slug, price, old_price, images, rating, review_count, stock_count,
+          id, name, slug, price, old_price, images, rating, review_count, stock_count, specifications,
           brand:brands(name),
           category:categories(name, slug)
         `)
@@ -98,6 +116,9 @@ const Catalog = () => {
           break;
         case "rating":
           query = query.order("rating", { ascending: false });
+          break;
+        case "new":
+          query = query.order("created_at", { ascending: false });
           break;
         default:
           query = query.order("review_count", { ascending: false });
@@ -123,12 +144,50 @@ const Catalog = () => {
     },
   });
 
-  const filteredProducts = products.filter(product => {
-    if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
-    if (selectedBrands.length > 0 && product.brand && !selectedBrands.includes(product.brand.name)) return false;
-    if (product.rating < minRating) return false;
-    return true;
-  });
+  // Extract unique specification filters from products
+  const specificationFilters = useMemo((): SpecificationFilter[] => {
+    const specsMap: Record<string, Set<string>> = {};
+    
+    products.forEach(product => {
+      if (product.specifications && typeof product.specifications === 'object') {
+        Object.entries(product.specifications).forEach(([key, value]) => {
+          if (value && typeof value === 'string') {
+            if (!specsMap[key]) specsMap[key] = new Set();
+            specsMap[key].add(value);
+          }
+        });
+      }
+    });
+
+    return Object.entries(specsMap)
+      .filter(([_, values]) => values.size > 1) // Only show filters with multiple options
+      .map(([key, values]) => ({
+        key,
+        label: key,
+        values: Array.from(values).sort(),
+      }));
+  }, [products]);
+
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      // Price filter
+      if (product.price < priceRange[0] || product.price > priceRange[1]) return false;
+      
+      // Brand filter
+      if (selectedBrands.length > 0 && product.brand && !selectedBrands.includes(product.brand.name)) return false;
+      
+      // Specification filters
+      for (const [key, values] of Object.entries(selectedSpecifications)) {
+        if (values.length > 0) {
+          const productValue = product.specifications?.[key];
+          if (!productValue || !values.includes(productValue)) return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [products, priceRange, selectedBrands, selectedSpecifications]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands(prev => 
@@ -136,6 +195,13 @@ const Catalog = () => {
         ? prev.filter(b => b !== brand)
         : [...prev, brand]
     );
+  };
+
+  const handleSpecificationChange = (key: string, values: string[]) => {
+    setSelectedSpecifications(prev => ({
+      ...prev,
+      [key]: values,
+    }));
   };
 
   const toggleFavorite = (productId: string) => {
@@ -168,30 +234,13 @@ const Catalog = () => {
   const clearFilters = () => {
     setPriceRange([0, 50000]);
     setSelectedBrands([]);
-    setMinRating(0);
+    setSelectedSpecifications({});
   };
 
-  const activeFiltersCount = selectedBrands.length + (minRating > 0 ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 50000 ? 1 : 0);
-
-  const getCategoryTitle = () => {
-    if (currentCategory) return currentCategory.name;
-    return "Каталог";
-  };
-
-  const FilterContent = () => (
-    <ModernFilters
-      brands={brands}
-      selectedBrands={selectedBrands}
-      onBrandToggle={toggleBrand}
-      priceRange={priceRange}
-      onPriceChange={setPriceRange}
-      minRating={minRating}
-      onRatingChange={setMinRating}
-      onClearFilters={clearFilters}
-      activeFiltersCount={activeFiltersCount}
-      maxPrice={50000}
-    />
-  );
+  const activeFiltersCount = 
+    selectedBrands.length + 
+    (priceRange[0] > 0 || priceRange[1] < 50000 ? 1 : 0) +
+    Object.values(selectedSpecifications).filter(v => v.length > 0).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -199,31 +248,26 @@ const Catalog = () => {
       <main className="pb-24 lg:pb-12">
         {/* Category Banner */}
         {currentCategory && (
-          <div className="relative h-48 md:h-64 lg:h-80 overflow-hidden animate-fade-in">
+          <div className="relative h-32 md:h-48 overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
             {currentCategory.image_url ? (
               <img
                 src={currentCategory.image_url}
                 alt={currentCategory.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover opacity-30"
               />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                <Folder className="h-24 w-24 text-primary/30" />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 lg:p-12">
-              <div className="container mx-auto">
-                <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-3 animate-fade-in">
+            ) : null}
+            <div className="absolute inset-0 flex items-center">
+              <div className="container mx-auto px-4">
+                <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Link to="/" className="hover:text-foreground transition-colors">Главная</Link>
+                  <span>/</span>
+                  <Link to="/catalog" className="hover:text-foreground transition-colors">Каталог</Link>
                   <span>/</span>
                   <span className="text-foreground">{currentCategory.name}</span>
                 </nav>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-2 animate-fade-in">
-                  {currentCategory.name}
-                </h1>
+                <h1 className="text-2xl md:text-3xl font-bold">{currentCategory.name}</h1>
                 {currentCategory.description && (
-                  <p className="text-muted-foreground max-w-2xl animate-fade-in">
+                  <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
                     {currentCategory.description}
                   </p>
                 )}
@@ -232,10 +276,10 @@ const Catalog = () => {
           </div>
         )}
 
-        <div className="container mx-auto px-4 py-6">
-          {/* Breadcrumb for non-category pages */}
+        <div className="container mx-auto px-4 py-4">
+          {/* Breadcrumb for catalog root */}
           {!currentCategory && (
-            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+            <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
               <Link to="/" className="hover:text-foreground">Главная</Link>
               <span>/</span>
               <span className="text-foreground">Каталог</span>
@@ -243,89 +287,49 @@ const Catalog = () => {
           )}
 
           {!currentCategory && (
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-bold">{getCategoryTitle()}</h1>
-                <p className="text-muted-foreground">{filteredProducts.length} товаров</p>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold mb-4">Каталог</h1>
           )}
 
-          {currentCategory && (
-            <p className="text-muted-foreground mb-6">{filteredProducts.length} товаров</p>
-          )}
+          <div className="flex gap-6">
+            {/* Sidebar - Categories */}
+            <CatalogSidebar 
+              categories={categories} 
+              currentCategorySlug={category} 
+            />
 
-          <div className="flex gap-8">
-            <aside className="hidden lg:block w-64 flex-shrink-0">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="font-semibold flex items-center gap-2">
-                      <SlidersHorizontal className="h-5 w-5" />
-                      Фильтры
-                    </h2>
-                    {activeFiltersCount > 0 && <Badge>{activeFiltersCount}</Badge>}
-                  </div>
-                  <FilterContent />
-                </CardContent>
-              </Card>
-            </aside>
+            {/* Main Content */}
+            <div className="flex-1 min-w-0">
+              {/* Horizontal Filters */}
+              <HorizontalFilters
+                brands={brands}
+                selectedBrands={selectedBrands}
+                onBrandToggle={toggleBrand}
+                priceRange={priceRange}
+                onPriceChange={setPriceRange}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                onClearFilters={clearFilters}
+                activeFiltersCount={activeFiltersCount}
+                maxPrice={50000}
+                specificationFilters={specificationFilters}
+                selectedSpecifications={selectedSpecifications}
+                onSpecificationChange={handleSpecificationChange}
+                totalProducts={filteredProducts.length}
+              />
 
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-6 gap-4">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" className="lg:hidden">
-                      <Filter className="h-4 w-4 mr-2" />
-                      Фильтры
-                      {activeFiltersCount > 0 && <Badge className="ml-2">{activeFiltersCount}</Badge>}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-80">
-                    <SheetHeader><SheetTitle>Фильтры</SheetTitle></SheetHeader>
-                    <div className="py-6"><FilterContent /></div>
-                  </SheetContent>
-                </Sheet>
+              {/* Products Count */}
+              <p className="text-sm text-muted-foreground py-3">
+                {filteredProducts.length} товаров
+              </p>
 
-                <div className="flex items-center gap-4 ml-auto">
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Сортировка" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="popular">По популярности</SelectItem>
-                      <SelectItem value="price-asc">Сначала дешевле</SelectItem>
-                      <SelectItem value="price-desc">Сначала дороже</SelectItem>
-                      <SelectItem value="rating">По рейтингу</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <div className="hidden sm:flex items-center border rounded-lg">
-                    <Button
-                      variant={viewMode === "grid" ? "secondary" : "ghost"}
-                      size="icon"
-                      className="rounded-r-none"
-                      onClick={() => setViewMode("grid")}
-                    >
-                      <Grid3X3 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant={viewMode === "list" ? "secondary" : "ghost"}
-                      size="icon"
-                      className="rounded-l-none"
-                      onClick={() => setViewMode("list")}
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
+              {/* Products Grid */}
               {loadingProducts ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                   {[...Array(8)].map((_, i) => (
                     <Card key={i}>
-                      <CardContent className="p-4">
+                      <CardContent className="p-3">
                         <Skeleton className="aspect-square rounded-lg mb-3" />
                         <Skeleton className="h-4 w-20 mb-2" />
                         <Skeleton className="h-5 w-full mb-2" />
@@ -344,9 +348,9 @@ const Catalog = () => {
                     <Card 
                       key={product.id} 
                       className="group cursor-pointer hover:shadow-lg transition-all duration-300 animate-fade-in"
-                      style={{ animationDelay: `${index * 50}ms` }}
+                      style={{ animationDelay: `${index * 30}ms` }}
                     >
-                      <CardContent className="p-4">
+                      <CardContent className="p-3">
                         <div className="relative aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
                           <Link to={`/product/${product.slug}`}>
                             <img 
@@ -356,7 +360,7 @@ const Catalog = () => {
                             />
                           </Link>
                           {product.old_price && (
-                            <Badge className="absolute top-2 left-2 bg-destructive">
+                            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">
                               -{Math.round((1 - product.price / product.old_price) * 100)}%
                             </Badge>
                           )}
@@ -368,7 +372,7 @@ const Catalog = () => {
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                               e.preventDefault();
                               toggleFavorite(product.id);
@@ -377,15 +381,21 @@ const Catalog = () => {
                             <Heart className={`h-4 w-4 ${favorites.includes(product.id) ? 'fill-destructive text-destructive' : ''}`} />
                           </Button>
                         </div>
+                        
                         <p className="text-xs text-muted-foreground mb-1">{product.brand?.name}</p>
+                        
                         <Link to={`/product/${product.slug}`}>
-                          <h3 className="font-medium line-clamp-2 mb-2 text-sm hover:text-primary transition-colors">{product.name}</h3>
+                          <h3 className="font-medium line-clamp-2 mb-2 text-sm hover:text-primary transition-colors leading-tight">
+                            {product.name}
+                          </h3>
                         </Link>
+                        
                         <div className="flex items-center gap-1 mb-2">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                           <span className="text-sm font-medium">{product.rating || 0}</span>
                           <span className="text-xs text-muted-foreground">({product.review_count || 0})</span>
                         </div>
+                        
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="font-bold">{product.price.toLocaleString()} ₽</span>
@@ -398,6 +408,7 @@ const Catalog = () => {
                           <Button
                             size="icon"
                             variant="outline"
+                            className="h-8 w-8"
                             disabled={product.stock_count === 0}
                             onClick={() => addToCart(product)}
                           >
@@ -410,8 +421,9 @@ const Catalog = () => {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground">Товары не найдены</p>
-                  <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                  <Folder className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">Товары не найдены</p>
+                  <Button variant="outline" onClick={clearFilters}>
                     Сбросить фильтры
                   </Button>
                 </div>
