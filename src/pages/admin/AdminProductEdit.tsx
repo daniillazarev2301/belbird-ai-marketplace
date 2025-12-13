@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -26,9 +27,27 @@ import {
   Video,
   Star,
   GripVertical,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableMediaItem } from "@/components/admin/SortableMediaItem";
+import { compressMultipleImages, formatFileSize } from "@/utils/imageCompression";
 
 interface ProductFormData {
   name: string;
@@ -57,9 +76,23 @@ const AdminProductEdit = () => {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const [formData, setFormData] = useState<ProductFormData>({
     name: "",
@@ -162,12 +195,43 @@ const AdminProductEdit = () => {
     if (!files || files.length === 0) return;
     
     setUploadingImages(true);
+    setUploadProgress(0);
+    setCompressionInfo(null);
     const newUrls: string[] = [];
-
+    const fileArray = Array.from(files);
+    
     try {
-      for (const file of Array.from(files)) {
+      // Separate images and videos
+      const imageFiles = fileArray.filter(f => !['mp4', 'webm'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+      const videoFiles = fileArray.filter(f => ['mp4', 'webm'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+      
+      // Compress images
+      let compressedImages: File[] = [];
+      if (imageFiles.length > 0) {
+        const originalSize = imageFiles.reduce((sum, f) => sum + f.size, 0);
+        setCompressionInfo(`Сжатие ${imageFiles.length} изображений...`);
+        
+        compressedImages = await compressMultipleImages(
+          imageFiles,
+          { maxSizeMB: 1, maxWidthOrHeight: 1920 },
+          (completed, total) => {
+            setUploadProgress((completed / total) * 30);
+          }
+        );
+        
+        const compressedSize = compressedImages.reduce((sum, f) => sum + f.size, 0);
+        const savedPercent = ((1 - compressedSize / originalSize) * 100).toFixed(0);
+        setCompressionInfo(`Сжато: ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} (−${savedPercent}%)`);
+      }
+      
+      // Combine all files for upload
+      const allFiles = [...compressedImages, ...videoFiles];
+      const totalFiles = allFiles.length;
+      
+      for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
         const fileExt = file.name.split('.').pop()?.toLowerCase();
-        const isVideoFile = ['mp4', 'webm', 'gif'].includes(fileExt || '');
+        const isVideoFile = ['mp4', 'webm'].includes(fileExt || '');
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `product-${isVideoFile ? 'videos' : 'images'}/${fileName}`;
 
@@ -186,6 +250,7 @@ const AdminProductEdit = () => {
           .getPublicUrl(filePath);
 
         newUrls.push(publicUrl);
+        setUploadProgress(30 + ((i + 1) / totalFiles) * 70);
       }
 
       // Videos go first by default
@@ -206,6 +271,8 @@ const AdminProductEdit = () => {
       toast.error("Ошибка при загрузке файлов");
     } finally {
       setUploadingImages(false);
+      setUploadProgress(0);
+      setTimeout(() => setCompressionInfo(null), 5000);
     }
   };
 
@@ -227,13 +294,19 @@ const AdminProductEdit = () => {
     toast.success("Установлено как главное");
   };
 
-  const moveMedia = (fromIndex: number, toIndex: number) => {
-    setFormData(prev => {
-      const newImages = [...prev.images];
-      const [moved] = newImages.splice(fromIndex, 1);
-      newImages.splice(toIndex, 0, moved);
-      return { ...prev, images: newImages };
-    });
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      setFormData(prev => {
+        const oldIndex = prev.images.indexOf(active.id as string);
+        const newIndex = prev.images.indexOf(over.id as string);
+        return {
+          ...prev,
+          images: arrayMove(prev.images, oldIndex, newIndex),
+        };
+      });
+    }
   };
 
   const generateDescription = async () => {
@@ -416,6 +489,12 @@ const AdminProductEdit = () => {
                 <CardTitle className="text-base flex items-center gap-2">
                   <ImageIcon className="h-4 w-4" />
                   Медиа (фото и видео)
+                  {compressionInfo && (
+                    <span className="ml-auto text-xs font-normal text-green-600 flex items-center gap-1">
+                      <Zap className="h-3 w-3" />
+                      {compressionInfo}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -432,93 +511,47 @@ const AdminProductEdit = () => {
                     onChange={(e) => handleMediaUpload(e.target.files)}
                   />
                   {uploadingImages ? (
-                    <Loader2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground animate-spin" />
+                    <div className="space-y-2">
+                      <Loader2 className="h-8 w-8 mx-auto text-muted-foreground animate-spin" />
+                      <Progress value={uploadProgress} className="w-full max-w-xs mx-auto" />
+                      <p className="text-xs text-muted-foreground">{Math.round(uploadProgress)}%</p>
+                    </div>
                   ) : (
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   )}
                   <p className="text-sm font-medium">
-                    {uploadingImages ? "Загрузка..." : "Нажмите для выбора файлов"}
+                    {uploadingImages ? "Загрузка и сжатие..." : "Нажмите для выбора файлов"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG, WEBP, MP4, WEBM, GIF до 10MB. Видео отображается первым.
+                    PNG, JPG, WEBP, MP4, WEBM, GIF. Изображения автоматически сжимаются до 1MB.
                   </p>
                 </div>
 
                 {formData.images.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                    {formData.images.map((url, index) => {
-                      const isVideoFile = isVideo(url);
-                      return (
-                        <div key={url} className="relative group aspect-square bg-muted rounded-lg overflow-hidden">
-                          {isVideoFile ? (
-                            <video
-                              src={url}
-                              className="w-full h-full object-cover"
-                              muted
-                              loop
-                              playsInline
-                              onMouseEnter={(e) => e.currentTarget.play()}
-                              onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
-                            />
-                          ) : (
-                            <img
-                              src={url}
-                              alt={`Product ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                          
-                          {/* Media type badge */}
-                          <div className="absolute top-1 left-1">
-                            {isVideoFile ? (
-                              <span className="px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded flex items-center gap-1">
-                                <Video className="h-3 w-3" />
-                              </span>
-                            ) : null}
-                          </div>
-                          
-                          {/* Main badge */}
-                          {index === 0 && (
-                            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded flex items-center gap-1">
-                              <Star className="h-3 w-3" />
-                              Главное
-                            </span>
-                          )}
-                          
-                          {/* Action buttons */}
-                          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {index !== 0 && (
-                              <button
-                                onClick={() => setAsMain(url)}
-                                className="p-1 rounded-full bg-primary text-primary-foreground"
-                                title="Сделать главным"
-                              >
-                                <Star className="h-3 w-3" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => removeMedia(url)}
-                              className="p-1 rounded-full bg-destructive text-destructive-foreground"
-                              title="Удалить"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                          
-                          {/* Drag handle - visual indicator */}
-                          <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => index > 0 && moveMedia(index, index - 1)}
-                              className="p-1 rounded-full bg-background/80 text-muted-foreground"
-                              title="Переместить вверх"
-                            >
-                              <GripVertical className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={formData.images}
+                      strategy={rectSortingStrategy}
+                    >
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {formData.images.map((url, index) => (
+                          <SortableMediaItem
+                            key={url}
+                            id={url}
+                            url={url}
+                            index={index}
+                            isVideo={isVideo(url)}
+                            onRemove={removeMedia}
+                            onSetMain={setAsMain}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
 
                 {formData.images.length === 0 && (
