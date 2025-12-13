@@ -1,21 +1,35 @@
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, PawPrint, Bird, Fish, Rabbit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-main.jpg";
 import { useEffect, useState } from "react";
 
-const FloatingParticle = ({ delay, size, left, duration }: { delay: number; size: number; left: number; duration: number }) => (
+const FloatingAnimal = ({ 
+  icon: Icon, 
+  delay, 
+  left, 
+  duration, 
+  size,
+  animationType 
+}: { 
+  icon: React.ElementType;
+  delay: number; 
+  left: number; 
+  duration: number;
+  size: number;
+  animationType: 'float' | 'fly' | 'swim' | 'hop';
+}) => (
   <div
-    className="absolute rounded-full bg-primary/20 blur-sm animate-float pointer-events-none"
+    className={`absolute text-primary/30 pointer-events-none animate-${animationType}`}
     style={{
-      width: size,
-      height: size,
       left: `${left}%`,
-      bottom: '-20px',
+      bottom: animationType === 'fly' ? '70%' : animationType === 'swim' ? '20%' : '-20px',
       animationDelay: `${delay}s`,
       animationDuration: `${duration}s`,
     }}
-  />
+  >
+    <Icon size={size} />
+  </div>
 );
 
 const HeroSection = () => {
@@ -32,14 +46,15 @@ const HeroSection = () => {
     if (chatButton) chatButton.click();
   };
 
-  const particles = [
-    { delay: 0, size: 12, left: 10, duration: 8 },
-    { delay: 2, size: 8, left: 25, duration: 10 },
-    { delay: 1, size: 16, left: 40, duration: 12 },
-    { delay: 3, size: 10, left: 55, duration: 9 },
-    { delay: 0.5, size: 14, left: 70, duration: 11 },
-    { delay: 2.5, size: 6, left: 85, duration: 8 },
-    { delay: 1.5, size: 20, left: 95, duration: 14 },
+  const animals = [
+    { icon: PawPrint, delay: 0, left: 5, duration: 10, size: 24, animationType: 'float' as const },
+    { icon: Bird, delay: 1, left: 75, duration: 8, size: 28, animationType: 'fly' as const },
+    { icon: PawPrint, delay: 2, left: 20, duration: 12, size: 20, animationType: 'float' as const },
+    { icon: Fish, delay: 0.5, left: 85, duration: 6, size: 22, animationType: 'swim' as const },
+    { icon: Bird, delay: 3, left: 60, duration: 9, size: 24, animationType: 'fly' as const },
+    { icon: Rabbit, delay: 1.5, left: 90, duration: 4, size: 26, animationType: 'hop' as const },
+    { icon: PawPrint, delay: 2.5, left: 35, duration: 11, size: 18, animationType: 'float' as const },
+    { icon: Fish, delay: 4, left: 70, duration: 7, size: 20, animationType: 'swim' as const },
   ];
 
   return (
@@ -57,10 +72,10 @@ const HeroSection = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-transparent" />
       </div>
 
-      {/* Floating Particles */}
+      {/* Animated Animals */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {particles.map((particle, index) => (
-          <FloatingParticle key={index} {...particle} />
+        {animals.map((animal, index) => (
+          <FloatingAnimal key={index} {...animal} />
         ))}
       </div>
 
@@ -124,27 +139,74 @@ const HeroSection = () => {
         </div>
       </div>
 
-      {/* Custom Styles */}
+      {/* Custom Animations */}
       <style>{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0) rotate(0deg);
             opacity: 0;
           }
-          10% {
-            opacity: 1;
-          }
-          90% {
-            opacity: 1;
-          }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.6; }
           100% {
-            transform: translateY(-100vh) rotate(360deg);
+            transform: translateY(-100vh) rotate(20deg);
             opacity: 0;
           }
         }
-        .animate-float {
-          animation: float linear infinite;
+        
+        @keyframes fly {
+          0% {
+            transform: translateX(-50px) translateY(0);
+            opacity: 0;
+          }
+          10% { opacity: 0.5; }
+          50% { transform: translateX(100px) translateY(-30px); }
+          90% { opacity: 0.5; }
+          100% {
+            transform: translateX(200px) translateY(0);
+            opacity: 0;
+          }
         }
+        
+        @keyframes swim {
+          0% {
+            transform: translateX(-30px) scaleX(1);
+            opacity: 0;
+          }
+          10% { opacity: 0.5; }
+          25% { transform: translateX(50px) translateY(-10px) scaleX(1); }
+          50% { transform: translateX(100px) translateY(5px) scaleX(-1); }
+          75% { transform: translateX(50px) translateY(-5px) scaleX(-1); }
+          90% { opacity: 0.5; }
+          100% {
+            transform: translateX(-30px) scaleX(1);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes hop {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            opacity: 0;
+          }
+          10% { opacity: 0.6; }
+          20% { transform: translateY(-40px) translateX(20px) scale(1.1); }
+          30% { transform: translateY(0) translateX(40px) scale(1); }
+          40% { transform: translateY(-30px) translateX(60px) scale(1.05); }
+          50% { transform: translateY(0) translateX(80px) scale(1); }
+          60% { transform: translateY(-50px) translateX(100px) scale(1.1); }
+          70% { transform: translateY(0) translateX(120px) scale(1); }
+          90% { opacity: 0.6; }
+          100% {
+            transform: translateY(-20px) translateX(150px);
+            opacity: 0;
+          }
+        }
+        
+        .animate-float { animation: float linear infinite; }
+        .animate-fly { animation: fly ease-in-out infinite; }
+        .animate-swim { animation: swim ease-in-out infinite; }
+        .animate-hop { animation: hop ease-in-out infinite; }
       `}</style>
     </section>
   );
