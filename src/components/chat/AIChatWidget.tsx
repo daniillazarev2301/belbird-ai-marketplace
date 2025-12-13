@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Send, Sparkles, User, Bot, Mic, MicOff, Trash2 } from "lucide-react";
+import { X, Send, Sparkles, User, Bot, Mic, MicOff, Trash2, ImagePlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  imageUrl?: string;
 }
 
 interface PetProfile {
@@ -94,6 +95,7 @@ const FormattedMessage = ({ content }: { content: string }) => {
 };
 
 const CHAT_STORAGE_KEY = "belbird_ai_chat_history";
+const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB
 
 const AIChatWidget = () => {
   const { toast } = useToast();
@@ -104,8 +106,11 @@ const AIChatWidget = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [petProfiles, setPetProfiles] = useState<PetProfile[]>([]);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const quickActions = [
     { icon: "🐾", text: "Корм для питомца" },
@@ -159,6 +164,86 @@ const AIChatWidget = () => {
       }
     }
   }, [messages, isTyping]);
+
+  // Compress image to base64
+  const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      
+      img.onload = () => {
+        // Max dimensions
+        const maxWidth = 800;
+        const maxHeight = 800;
+        
+        let { width, height } = img;
+        
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Convert to base64 with compression
+        const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        resolve(base64);
+      };
+      
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Handle image selection
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Неверный формат",
+        description: "Пожалуйста, выберите изображение",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast({
+        title: "Файл слишком большой",
+        description: "Максимальный размер изображения — 4 МБ",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImage(file);
+      setPendingImage(compressed);
+      toast({
+        title: "Изображение добавлено",
+        description: "Отправьте сообщение или нажмите на кнопку отправки",
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обработать изображение",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompressing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   // Voice recording setup
   const startRecording = useCallback(() => {
@@ -223,11 +308,17 @@ const AIChatWidget = () => {
     setIsRecording(false);
   }, []);
 
-  const streamChat = useCallback(async (userMessage: string) => {
-    const newMessages: Message[] = [...messages, { role: "user", content: userMessage }];
+  const streamChat = useCallback(async (userMessage: string, imageData?: string) => {
+    const newMessage: Message = { 
+      role: "user", 
+      content: userMessage,
+      imageUrl: imageData 
+    };
+    const newMessages: Message[] = [...messages, newMessage];
     setMessages(newMessages);
     setIsLoading(true);
     setIsTyping(true);
+    setPendingImage(null);
 
     try {
       const response = await fetch(
@@ -239,8 +330,9 @@ const AIChatWidget = () => {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: newMessages,
+            messages: newMessages.map(m => ({ role: m.role, content: m.content })),
             petProfiles,
+            imageData,
           }),
         }
       );
@@ -320,22 +412,37 @@ const AIChatWidget = () => {
   }, [messages, petProfiles]);
 
   const handleSend = () => {
-    if (!input.trim() || isLoading) return;
-    streamChat(input.trim());
+    if ((!input.trim() && !pendingImage) || isLoading) return;
+    const message = input.trim() || "Что это за изображение? Порекомендуй подходящие товары.";
+    streamChat(message, pendingImage || undefined);
     setInput("");
   };
 
   const clearHistory = () => {
     setMessages([]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
+    setPendingImage(null);
     toast({
       title: "История очищена",
       description: "Чат начат заново",
     });
   };
 
+  const removePendingImage = () => {
+    setPendingImage(null);
+  };
+
   return (
     <>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageSelect}
+      />
+
       {/* Chat Button */}
       <button
         data-chat-trigger
@@ -417,6 +524,9 @@ const AIChatWidget = () => {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Я AI-консультант BelBird. Помогу подобрать товары для ваших питомцев, дома и сада.
               </p>
+              <p className="text-xs text-muted-foreground mt-3">
+                📷 Отправьте фото питомца или товара для персональных рекомендаций
+              </p>
               {petProfiles.length > 0 && (
                 <div className="mt-4 px-3 py-2 rounded-xl bg-primary/10 inline-block">
                   <p className="text-xs text-primary font-medium">
@@ -456,17 +566,29 @@ const AIChatWidget = () => {
                   </Avatar>
                   <div
                     className={cn(
-                      "max-w-[80%] px-4 py-2.5 text-sm leading-relaxed",
+                      "max-w-[80%] text-sm leading-relaxed",
                       message.role === "user"
                         ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md shadow-sm"
                         : "bg-muted/70 rounded-2xl rounded-bl-md border border-border/50"
                     )}
                   >
-                    {message.role === "assistant" ? (
-                      <FormattedMessage content={message.content} />
-                    ) : (
-                      message.content
+                    {/* Image preview for user messages */}
+                    {message.imageUrl && (
+                      <div className="p-2 pb-0">
+                        <img 
+                          src={message.imageUrl} 
+                          alt="Uploaded" 
+                          className="rounded-xl max-h-40 w-auto object-cover"
+                        />
+                      </div>
                     )}
+                    <div className="px-4 py-2.5">
+                      {message.role === "assistant" ? (
+                        <FormattedMessage content={message.content} />
+                      ) : (
+                        message.content
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -488,8 +610,27 @@ const AIChatWidget = () => {
           )}
         </ScrollArea>
 
+        {/* Pending Image Preview */}
+        {pendingImage && (
+          <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
+            <div className="relative inline-block">
+              <img 
+                src={pendingImage} 
+                alt="Preview" 
+                className="h-16 w-auto rounded-lg object-cover border border-border"
+              />
+              <button
+                onClick={removePendingImage}
+                className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs hover:bg-destructive/90"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Quick Actions */}
-        {messages.length === 0 && (
+        {messages.length === 0 && !pendingImage && (
           <div className="px-4 pb-3">
             <p className="text-xs text-muted-foreground mb-2 font-medium">Быстрые запросы:</p>
             <div className="flex flex-wrap gap-2">
@@ -515,6 +656,21 @@ const AIChatWidget = () => {
           <div className="flex items-center gap-2">
             <Button
               type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isCompressing}
+              className="rounded-full h-10 w-10 flex-shrink-0"
+              title="Прикрепить изображение"
+            >
+              {isCompressing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              type="button"
               variant={isRecording ? "destructive" : "outline"}
               size="icon"
               onClick={isRecording ? stopRecording : startRecording}
@@ -530,14 +686,14 @@ const AIChatWidget = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder={isRecording ? "Говорите..." : "Спросите о товарах..."}
+              placeholder={isRecording ? "Говорите..." : pendingImage ? "Добавьте описание..." : "Спросите о товарах..."}
               disabled={isLoading || isRecording}
               className="flex-1 bg-background border-border/50 rounded-full px-4 focus-visible:ring-primary/50"
             />
             <Button 
               onClick={handleSend} 
               size="icon" 
-              disabled={isLoading || !input.trim() || isRecording}
+              disabled={isLoading || (!input.trim() && !pendingImage) || isRecording}
               className="rounded-full h-10 w-10 bg-primary hover:bg-primary/90 shadow-sm transition-all hover:scale-105"
             >
               <Send className="h-4 w-4" />
