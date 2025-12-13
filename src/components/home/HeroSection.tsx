@@ -3,14 +3,36 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-main.jpg";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const HeroSection = () => {
   const [scrollY, setScrollY] = useState(0);
+  const [stats, setStats] = useState({ products: 0, reviews: 0, avgRating: 0 });
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const [productsRes, reviewsRes] = await Promise.all([
+        supabase.from("products").select("id", { count: "exact", head: true }),
+        supabase.from("reviews").select("rating")
+      ]);
+
+      const productCount = productsRes.count || 0;
+      const reviews = reviewsRes.data || [];
+      const reviewCount = reviews.length;
+      const avgRating = reviewCount > 0 
+        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1)
+        : 0;
+
+      setStats({ products: productCount, reviews: reviewCount, avgRating: Number(avgRating) });
+    };
+
+    fetchStats();
   }, []);
 
   const scrollToChat = () => {
@@ -114,21 +136,29 @@ const HeroSection = () => {
             </Button>
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-8 mt-12 pt-8 border-t border-border/50">
-            <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <p className="text-2xl font-semibold">50K+</p>
-              <p className="text-sm text-muted-foreground">товаров</p>
+          {/* Stats - only show if we have real data */}
+          {(stats.products > 0 || stats.reviews > 0) && (
+            <div className="flex gap-8 mt-12 pt-8 border-t border-border/50">
+              {stats.products > 0 && (
+                <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  <p className="text-2xl font-semibold">{stats.products}</p>
+                  <p className="text-sm text-muted-foreground">товаров</p>
+                </div>
+              )}
+              {stats.reviews > 0 && (
+                <div className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                  <p className="text-2xl font-semibold">{stats.reviews}</p>
+                  <p className="text-sm text-muted-foreground">отзывов</p>
+                </div>
+              )}
+              {stats.avgRating > 0 && (
+                <div className="animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                  <p className="text-2xl font-semibold">{stats.avgRating}</p>
+                  <p className="text-sm text-muted-foreground">рейтинг</p>
+                </div>
+              )}
             </div>
-            <div className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
-              <p className="text-2xl font-semibold">10K+</p>
-              <p className="text-sm text-muted-foreground">отзывов</p>
-            </div>
-            <div className="animate-fade-in" style={{ animationDelay: '0.6s' }}>
-              <p className="text-2xl font-semibold">4.9</p>
-              <p className="text-sm text-muted-foreground">рейтинг</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
