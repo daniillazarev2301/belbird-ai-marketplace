@@ -12,12 +12,6 @@ import { CategoryMenu } from "./CategoryMenu";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import VoiceSearch from "@/components/search/VoiceSearch";
 import VisualSearch from "@/components/search/VisualSearch";
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  images: string[] | null;
-}
 
 interface SearchResult {
   id: string;
@@ -29,6 +23,8 @@ interface SearchResult {
 
 const Header = () => {
   const { settings } = useSiteSettings();
+  const { getItemCount } = useCart();
+  const cartCount = getItemCount();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -36,7 +32,10 @@ const Header = () => {
   const [user, setUser] = useState<any>(null);
   const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
   const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  
+  const siteName = settings?.general?.site_name || "BelBird";
   const logoUrl = settings?.general?.logo_url;
 
   useEffect(() => {
@@ -178,6 +177,7 @@ const Header = () => {
             >
               <Mic className="h-4 w-4" />
             </button>
+          </form>
           {showResults && searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-50 overflow-hidden">
               {searchResults.map((result) => (
