@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag } from "lucide-react";
+import { ArrowLeft, MapPin, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface DeliveryOption {
   id: string;
@@ -99,11 +100,15 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { items, getTotal, clearCart } = useCart();
+  const { settings } = useSiteSettings();
   const [step, setStep] = useState(1);
   const [delivery, setDelivery] = useState("cdek");
   const [payment, setPayment] = useState("card");
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
+  const alfaBankEnabled = settings?.payment?.alfa_bank_enabled ?? false;
 
   const [contactData, setContactData] = useState({
     name: "",
@@ -171,6 +176,72 @@ const Checkout = () => {
         .insert(orderItems);
       
       if (itemsError) throw itemsError;
+      
+      // If payment method is card and Alfa-Bank is enabled, process payment
+      if (payment === "card" && alfaBankEnabled) {
+        setIsProcessingPayment(true);
+        
+        try {
+          const returnUrl = `${window.location.origin}/account/orders?payment=success&order=${order.id}`;
+          const failUrl = `${window.location.origin}/account/orders?payment=failed&order=${order.id}`;
+          
+          const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
+            "alfa-bank-payment",
+            {
+              body: {
+                orderId: order.id,
+                amount: total,
+                returnUrl,
+                failUrl,
+                description: `Заказ #${order.id.slice(0, 8).toUpperCase()}`
+              },
+              headers: {
+                "Content-Type": "application/json"
+              }
+            }
+          );
+
+          // Add action query parameter
+          const functionUrl = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alfa-bank-payment`);
+          functionUrl.searchParams.set("action", "create");
+
+          const response = await fetch(functionUrl.toString(), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+            },
+            body: JSON.stringify({
+              orderId: order.id,
+              amount: total,
+              returnUrl,
+              failUrl,
+              description: `Заказ #${order.id.slice(0, 8).toUpperCase()}`
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.error) {
+            throw new Error(result.error || "Failed to create payment");
+          }
+
+          // Redirect to Alfa-Bank payment page
+          if (result.formUrl) {
+            window.location.href = result.formUrl;
+            return;
+          }
+        } catch (paymentError) {
+          console.error("Payment processing error:", paymentError);
+          toast({
+            title: "Ошибка оплаты",
+            description: "Не удалось создать платеж. Заказ сохранен, вы можете оплатить его позже.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsProcessingPayment(false);
+        }
+      }
       
       clearCart();
       
@@ -482,10 +553,34 @@ const Checkout = () => {
                   className="w-full" 
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={step < 3 || isSubmitting}
+                  disabled={step < 3 || isSubmitting || isProcessingPayment}
                 >
-                  {isSubmitting ? "Оформление..." : `Оплатить ${total.toLocaleString()} ₽`}
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Переход к оплате...
+                    </>
+                  ) : isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Оформление...
+                    </>
+                  ) : payment === "card" && alfaBankEnabled ? (
+                    <>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Оплатить картой {total.toLocaleString()} ₽
+                    </>
+                  ) : (
+                    `Оформить заказ ${total.toLocaleString()} ₽`
+                  )}
                 </Button>
+
+                {payment === "card" && alfaBankEnabled && (
+                  <div className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground">
+                    <Shield className="h-3 w-3" />
+                    <span>Безопасная оплата через Альфа-Банк</span>
+                  </div>
+                )}
 
                 <p className="text-xs text-muted-foreground text-center mt-4">
                   Нажимая кнопку, вы соглашаетесь с офертой и политикой конфиденциальности
