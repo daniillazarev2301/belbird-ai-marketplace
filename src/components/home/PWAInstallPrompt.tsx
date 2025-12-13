@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download, X, Smartphone } from "lucide-react";
+import { Download, X, Smartphone, Share, Plus } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -12,6 +12,8 @@ export const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
     // Check if already installed
@@ -19,6 +21,10 @@ export const PWAInstallPrompt = () => {
       setIsInstalled(true);
       return;
     }
+
+    // Detect iOS
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    setIsIOS(iOS);
 
     // Check if dismissed recently
     const dismissed = localStorage.getItem("pwa-prompt-dismissed");
@@ -30,6 +36,12 @@ export const PWAInstallPrompt = () => {
       }
     }
 
+    // For iOS, show instructions prompt after delay
+    if (iOS) {
+      const timer = setTimeout(() => setShowPrompt(true), 3000);
+      return () => clearTimeout(timer);
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -38,13 +50,28 @@ export const PWAInstallPrompt = () => {
 
     window.addEventListener("beforeinstallprompt", handler);
 
+    // Show prompt after delay even without event (for manual install)
+    const timer = setTimeout(() => {
+      setShowPrompt(true);
+    }, 5000);
+
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+      clearTimeout(timer);
     };
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    if (isIOS) {
+      setShowIOSInstructions(true);
+      return;
+    }
+
+    if (!deferredPrompt) {
+      // Show manual instructions for Android Chrome
+      setShowIOSInstructions(true);
+      return;
+    }
 
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
@@ -60,9 +87,91 @@ export const PWAInstallPrompt = () => {
   const handleDismiss = () => {
     localStorage.setItem("pwa-prompt-dismissed", Date.now().toString());
     setShowPrompt(false);
+    setShowIOSInstructions(false);
   };
 
-  if (!showPrompt || isInstalled) return null;
+  if (isInstalled) return null;
+
+  // iOS/Android Instructions Modal
+  if (showIOSInstructions) {
+    return (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+        <Card className="w-full max-w-sm shadow-xl animate-in slide-in-from-bottom-5">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <Smartphone className="h-6 w-6 text-primary" />
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleDismiss}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <h3 className="text-lg font-semibold mb-4">Как установить приложение</h3>
+            {isIOS ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0">
+                    1
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Нажмите на кнопку <Share className="inline h-4 w-4 mx-1" /> Поделиться внизу экрана Safari
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0">
+                    2
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Прокрутите вниз и нажмите <Plus className="inline h-4 w-4 mx-1" /> На экран «Домой»
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0">
+                    3
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Нажмите «Добавить» в правом верхнем углу
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0">
+                    1
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Откройте меню браузера (⋮) в правом верхнем углу
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0">
+                    2
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Выберите «Установить приложение» или «Добавить на главный экран»
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium shrink-0">
+                    3
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Подтвердите установку
+                  </p>
+                </div>
+              </div>
+            )}
+            <Button className="w-full mt-6" onClick={handleDismiss}>
+              Понятно
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!showPrompt) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 md:left-auto md:right-6 md:max-w-sm animate-in slide-in-from-bottom-5">
@@ -102,7 +211,7 @@ export const PWAInstallPrompt = () => {
               onClick={handleInstall}
             >
               <Download className="h-4 w-4" />
-              Установить
+              {isIOS || !deferredPrompt ? "Как установить" : "Установить"}
             </Button>
           </div>
         </CardContent>
