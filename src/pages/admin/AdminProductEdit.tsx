@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import {
   DndContext,
   closestCenter,
@@ -465,8 +466,9 @@ const AdminProductEdit = () => {
       };
 
       if (isNew) {
-        const { error } = await supabase.from('products').insert(productData);
+        const { data: newProduct, error } = await supabase.from('products').insert(productData).select('id').single();
         if (error) throw error;
+        await logAdminActivity({ action: "create", entityType: "product", entityId: newProduct?.id, details: { name: formData.name } });
         toast.success("Товар создан");
       } else {
         const { error } = await supabase
@@ -474,6 +476,7 @@ const AdminProductEdit = () => {
           .update(productData)
           .eq('id', id);
         if (error) throw error;
+        await logAdminActivity({ action: "update", entityType: "product", entityId: id, details: { name: formData.name } });
         toast.success("Товар обновлён");
       }
 

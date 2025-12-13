@@ -25,8 +25,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { Search, Star, Check, X, Eye, Loader2, RefreshCw, MessageSquare } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Search, Star, Check, X, Eye, Loader2, RefreshCw, MessageSquare, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -49,11 +51,20 @@ interface Review {
   products?: { name: string; slug: string } | null;
 }
 
+interface Product {
+  id: string;
+  name: string;
+}
+
 const AdminReviews = () => {
   const queryClient = useQueryClient();
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [reviewCount, setReviewCount] = useState("5");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: reviews = [], isLoading, refetch } = useQuery({
     queryKey: ["admin-reviews", statusFilter, searchQuery],
@@ -84,6 +95,19 @@ const AdminReviews = () => {
       }
 
       return filtered as Review[];
+    },
+  });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["admin-products-for-reviews"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data as Product[];
     },
   });
 
@@ -118,6 +142,39 @@ const AdminReviews = () => {
       toast.error("Ошибка: " + error.message);
     },
   });
+
+  const handleGenerateReviews = async () => {
+    if (!selectedProduct) {
+      toast.error("Выберите товар");
+      return;
+    }
+
+    const product = products.find(p => p.id === selectedProduct);
+    if (!product) return;
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-reviews", {
+        body: {
+          productId: selectedProduct,
+          productName: product.name,
+          count: parseInt(reviewCount),
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Создано ${data.count} отзывов`);
+      setGenerateDialogOpen(false);
+      setSelectedProduct("");
+      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    } catch (error) {
+      console.error("Error generating reviews:", error);
+      toast.error("Ошибка генерации отзывов");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const stats = {
     total: reviews.length,
@@ -194,6 +251,10 @@ const AdminReviews = () => {
             <Button variant="outline" size="icon" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4" />
             </Button>
+            <Button className="gap-2" onClick={() => setGenerateDialogOpen(true)}>
+              <Sparkles className="h-4 w-4" />
+              AI Отзывы
+            </Button>
           </div>
         </div>
 
@@ -205,7 +266,11 @@ const AdminReviews = () => {
             </div>
           ) : reviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-muted-foreground">Отзывы не найдены</p>
+              <p className="text-muted-foreground mb-4">Отзывы не найдены</p>
+              <Button onClick={() => setGenerateDialogOpen(true)} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Сгенерировать AI отзывы
+              </Button>
             </div>
           ) : (
             <Table>
@@ -357,6 +422,64 @@ const AdminReviews = () => {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Generate Reviews Dialog */}
+        <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Генерация AI отзывов
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Товар *</Label>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите товар" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Количество отзывов</Label>
+                <Select value={reviewCount} onValueChange={setReviewCount}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3 отзыва</SelectItem>
+                    <SelectItem value="5">5 отзывов</SelectItem>
+                    <SelectItem value="10">10 отзывов</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                AI сгенерирует реалистичные отзывы на русском языке с разными оценками и текстами
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleGenerateReviews} disabled={isGenerating} className="gap-2">
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Сгенерировать
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </AdminLayout>
