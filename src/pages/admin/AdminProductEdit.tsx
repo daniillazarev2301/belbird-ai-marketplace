@@ -56,7 +56,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableMediaItem } from "@/components/admin/SortableMediaItem";
-import { compressMultipleImages, formatFileSize } from "@/utils/imageCompression";
+import { compressMultipleImages, formatFileSize, MEDIA_REQUIREMENTS, validateMediaFile, validateImageDimensions, isVideoFile, countMediaTypes } from "@/utils/imageCompression";
 
 interface ProductFormData {
   name: string;
@@ -213,23 +213,53 @@ const AdminProductEdit = () => {
     }));
   };
 
-  const isVideo = (url: string) => {
-    const lower = url.toLowerCase();
-    return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.endsWith('.gif') || lower.includes('video');
-  };
+  const isVideo = (url: string) => isVideoFile(url);
 
   const handleMediaUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    
+    const currentMedia = countMediaTypes(formData.images);
+    const fileArray = Array.from(files);
+    
+    // Validate files before uploading
+    const validFiles: File[] = [];
+    const warnings: string[] = [];
+    
+    for (const file of fileArray) {
+      const validation = validateMediaFile(file, currentMedia);
+      
+      if (!validation.valid) {
+        validation.errors.forEach(err => toast.error(`${file.name}: ${err}`));
+        continue;
+      }
+      
+      // Check image dimensions
+      const dimensionValidation = await validateImageDimensions(file);
+      warnings.push(...dimensionValidation.warnings.map(w => `${file.name}: ${w}`));
+      
+      validFiles.push(file);
+      
+      // Update count for next iteration
+      if (isVideoFile(file.name)) {
+        currentMedia.videos++;
+      } else {
+        currentMedia.images++;
+      }
+    }
+    
+    // Show warnings
+    warnings.forEach(w => toast.warning(w));
+    
+    if (validFiles.length === 0) return;
     
     setUploadingImages(true);
     setUploadProgress(0);
     setCompressionInfo(null);
     const newUrls: string[] = [];
-    const fileArray = Array.from(files);
     
     try {
-      const imageFiles = fileArray.filter(f => !['mp4', 'webm'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
-      const videoFiles = fileArray.filter(f => ['mp4', 'webm'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+      const imageFiles = validFiles.filter(f => !['mp4', 'mov', 'webm'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
+      const videoFiles = validFiles.filter(f => ['mp4', 'mov', 'webm'].includes(f.name.split('.').pop()?.toLowerCase() || ''));
       
       let compressedImages: File[] = [];
       if (imageFiles.length > 0) {
@@ -238,7 +268,7 @@ const AdminProductEdit = () => {
         
         compressedImages = await compressMultipleImages(
           imageFiles,
-          { maxSizeMB: 1, maxWidthOrHeight: 1920 },
+          { maxSizeMB: 1, maxWidthOrHeight: 1920, initialQuality: MEDIA_REQUIREMENTS.image.quality },
           (completed, total) => {
             setUploadProgress((completed / total) * 30);
           }
@@ -255,9 +285,9 @@ const AdminProductEdit = () => {
       for (let i = 0; i < allFiles.length; i++) {
         const file = allFiles[i];
         const fileExt = file.name.split('.').pop()?.toLowerCase();
-        const isVideoFile = ['mp4', 'webm'].includes(fileExt || '');
+        const isVideoUpload = ['mp4', 'mov', 'webm'].includes(fileExt || '');
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `product-${isVideoFile ? 'videos' : 'images'}/${fileName}`;
+        const filePath = `product-${isVideoUpload ? 'videos' : 'images'}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('products')
@@ -745,6 +775,37 @@ const AdminProductEdit = () => {
 
           {/* Media Tab */}
           <TabsContent value="media" className="space-y-6">
+            {/* Requirements Info */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="bg-muted/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Требования к фото
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Формат:</span><span>JPG, PNG, WEBP</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Разрешение:</span><span>от {MEDIA_REQUIREMENTS.image.minWidth}×{MEDIA_REQUIREMENTS.image.minHeight} px</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Размер:</span><span>до {MEDIA_REQUIREMENTS.image.maxSizeMB} МБ</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Количество:</span><span>до {MEDIA_REQUIREMENTS.image.maxCount} шт</span></div>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Требования к видео
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Формат:</span><span>MP4, MOV</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Размер:</span><span>до {MEDIA_REQUIREMENTS.video.maxSizeMB} МБ</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Количество:</span><span>{MEDIA_REQUIREMENTS.video.maxCount} шт</span></div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -760,7 +821,7 @@ const AdminProductEdit = () => {
                   )}
                 </CardTitle>
                 <CardDescription>
-                  Загрузите фото и видео товара. Видео автоматически становится главным и воспроизводится при наведении.
+                  Видео автоматически становится главным и воспроизводится при наведении как на WB/Ozon.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -771,7 +832,7 @@ const AdminProductEdit = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,video/mp4,video/webm,.gif"
+                    accept=".jpg,.jpeg,.png,.webp,.mp4,.mov"
                     multiple
                     className="hidden"
                     onChange={(e) => handleMediaUpload(e.target.files)}
@@ -787,7 +848,7 @@ const AdminProductEdit = () => {
                       <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                       <p className="text-base font-medium mb-1">Нажмите для выбора файлов</p>
                       <p className="text-sm text-muted-foreground">
-                        PNG, JPG, WEBP, MP4, WEBM, GIF • Изображения автоматически сжимаются до 1MB
+                        JPG, PNG, WEBP • MP4, MOV • Изображения автоматически сжимаются
                       </p>
                     </>
                   )}
@@ -795,17 +856,15 @@ const AdminProductEdit = () => {
 
                 {formData.images.length > 0 ? (
                   <>
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-4 flex-wrap">
                       <Badge variant="outline" className="gap-1">
                         <ImageIcon className="h-3 w-3" />
-                        {imageCount} фото
+                        {imageCount}/{MEDIA_REQUIREMENTS.image.maxCount} фото
                       </Badge>
-                      {videoCount > 0 && (
-                        <Badge variant="outline" className="gap-1">
-                          <Eye className="h-3 w-3" />
-                          {videoCount} видео
-                        </Badge>
-                      )}
+                      <Badge variant={videoCount >= MEDIA_REQUIREMENTS.video.maxCount ? "secondary" : "outline"} className="gap-1">
+                        <Eye className="h-3 w-3" />
+                        {videoCount}/{MEDIA_REQUIREMENTS.video.maxCount} видео
+                      </Badge>
                       <span className="text-sm text-muted-foreground">
                         Перетаскивайте для изменения порядка. Первый файл — главный.
                       </span>
@@ -839,7 +898,7 @@ const AdminProductEdit = () => {
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <ImageIcon className="h-12 w-12 mb-3" />
                     <p className="text-lg font-medium">Нет загруженных медиафайлов</p>
-                    <p className="text-sm">Загрузите фото или видео товара</p>
+                    <p className="text-sm">Загрузите фото или видеообложку товара</p>
                   </div>
                 )}
               </CardContent>

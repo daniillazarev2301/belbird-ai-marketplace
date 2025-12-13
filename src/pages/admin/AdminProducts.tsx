@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -34,23 +35,26 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Plus,
   Search,
-  Filter,
   MoreHorizontal,
   Edit,
-  Copy,
   Trash2,
   Eye,
-  Sparkles,
   Download,
-  Upload,
   Loader2,
   RefreshCw,
+  Tags,
+  FolderOpen,
+  Flame,
+  Star,
+  Bot,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -74,13 +78,29 @@ interface Product {
   is_ai_recommended: boolean | null;
   sku: string | null;
   category_id: string | null;
+  brand_id: string | null;
   categories?: { name: string } | null;
+  brands?: { name: string } | null;
 }
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+}
+
+interface Brand {
+  id: string;
+  name: string;
+}
+
+interface BulkEditData {
+  category_id?: string;
+  brand_id?: string;
+  is_bestseller?: boolean;
+  is_new?: boolean;
+  is_ai_recommended?: boolean;
+  is_active?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -106,6 +126,9 @@ const AdminProducts = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const [bulkEditData, setBulkEditData] = useState<BulkEditData>({});
+  const [bulkEditFields, setBulkEditFields] = useState<Record<string, boolean>>({});
 
   // Realtime subscription
   useRealtimeSubscription({
@@ -135,7 +158,7 @@ const AdminProducts = () => {
     queryFn: async () => {
       let query = supabase
         .from("products")
-        .select("*, categories(name)")
+        .select("*, categories(name), brands(name)")
         .order("created_at", { ascending: false });
 
       if (searchQuery) {
@@ -168,6 +191,19 @@ const AdminProducts = () => {
         .order("name");
       if (error) throw error;
       return data as Category[];
+    },
+  });
+
+  // Fetch brands
+  const { data: brands = [] } = useQuery({
+    queryKey: ["admin-brands"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brands")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data as Brand[];
     },
   });
 
@@ -310,10 +346,77 @@ const AdminProducts = () => {
     );
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (selectedProducts.length === 0) return;
-    selectedProducts.forEach((id) => deleteProduct.mutate(id));
-    setSelectedProducts([]);
+    
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .in("id", selectedProducts);
+      
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success(`Удалено ${selectedProducts.length} товаров`);
+      setSelectedProducts([]);
+    } catch (error: any) {
+      toast.error("Ошибка при удалении: " + error.message);
+    }
+  };
+
+  // Bulk update mutation
+  const bulkUpdateProducts = useMutation({
+    mutationFn: async (data: BulkEditData) => {
+      const updateData: Record<string, any> = {};
+      
+      if (bulkEditFields.category_id && data.category_id !== undefined) {
+        updateData.category_id = data.category_id || null;
+      }
+      if (bulkEditFields.brand_id && data.brand_id !== undefined) {
+        updateData.brand_id = data.brand_id || null;
+      }
+      if (bulkEditFields.is_bestseller) {
+        updateData.is_bestseller = data.is_bestseller ?? false;
+      }
+      if (bulkEditFields.is_new) {
+        updateData.is_new = data.is_new ?? false;
+      }
+      if (bulkEditFields.is_ai_recommended) {
+        updateData.is_ai_recommended = data.is_ai_recommended ?? false;
+      }
+      if (bulkEditFields.is_active) {
+        updateData.is_active = data.is_active ?? true;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        throw new Error("Выберите поля для изменения");
+      }
+
+      const { error } = await supabase
+        .from("products")
+        .update(updateData)
+        .in("id", selectedProducts);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success(`Обновлено ${selectedProducts.length} товаров`);
+      setBulkEditDialogOpen(false);
+      setBulkEditData({});
+      setBulkEditFields({});
+      setSelectedProducts([]);
+    },
+    onError: (error: any) => {
+      toast.error("Ошибка: " + error.message);
+    },
+  });
+
+  const openBulkEditDialog = () => {
+    setBulkEditData({});
+    setBulkEditFields({});
+    setBulkEditDialogOpen(true);
   };
 
   return (
@@ -368,16 +471,25 @@ const AdminProducts = () => {
 
         {/* Bulk Actions & Add Button */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {selectedProducts.length > 0 && (
               <>
-                <span className="text-sm text-muted-foreground">
+                <Badge variant="secondary" className="text-sm">
                   Выбрано: {selectedProducts.length}
-                </span>
+                </Badge>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1 text-destructive"
+                  className="gap-1"
+                  onClick={openBulkEditDialog}
+                >
+                  <Tags className="h-3 w-3" />
+                  Массовое редактирование
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-destructive hover:text-destructive"
                   onClick={handleDeleteSelected}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -679,6 +791,188 @@ const AdminProducts = () => {
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               {editProduct ? "Сохранить" : "Добавить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tags className="h-5 w-5" />
+              Массовое редактирование
+            </DialogTitle>
+            <DialogDescription>
+              Изменения будут применены к {selectedProducts.length} выбранным товарам.
+              Выберите поля, которые хотите изменить.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Category */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="bulk-category"
+                  checked={bulkEditFields.category_id || false}
+                  onCheckedChange={(checked) => setBulkEditFields(prev => ({ ...prev, category_id: !!checked }))}
+                />
+                <Label htmlFor="bulk-category" className="flex items-center gap-2">
+                  <FolderOpen className="h-4 w-4" />
+                  Категория
+                </Label>
+              </div>
+              {bulkEditFields.category_id && (
+                <Select
+                  value={bulkEditData.category_id || ""}
+                  onValueChange={(value) => setBulkEditData(prev => ({ ...prev, category_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите категорию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Без категории</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Brand */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="bulk-brand"
+                  checked={bulkEditFields.brand_id || false}
+                  onCheckedChange={(checked) => setBulkEditFields(prev => ({ ...prev, brand_id: !!checked }))}
+                />
+                <Label htmlFor="bulk-brand" className="flex items-center gap-2">
+                  <Tags className="h-4 w-4" />
+                  Бренд
+                </Label>
+              </div>
+              {bulkEditFields.brand_id && (
+                <Select
+                  value={bulkEditData.brand_id || ""}
+                  onValueChange={(value) => setBulkEditData(prev => ({ ...prev, brand_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите бренд" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Без бренда</SelectItem>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Labels */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Метки товаров</Label>
+              
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="bulk-bestseller-enable"
+                    checked={bulkEditFields.is_bestseller || false}
+                    onCheckedChange={(checked) => setBulkEditFields(prev => ({ ...prev, is_bestseller: !!checked }))}
+                  />
+                  <Label htmlFor="bulk-bestseller-enable" className="flex items-center gap-2">
+                    <Flame className="h-4 w-4 text-orange-500" />
+                    Хит продаж
+                  </Label>
+                </div>
+                {bulkEditFields.is_bestseller && (
+                  <Switch
+                    checked={bulkEditData.is_bestseller || false}
+                    onCheckedChange={(checked) => setBulkEditData(prev => ({ ...prev, is_bestseller: checked }))}
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="bulk-new-enable"
+                    checked={bulkEditFields.is_new || false}
+                    onCheckedChange={(checked) => setBulkEditFields(prev => ({ ...prev, is_new: !!checked }))}
+                  />
+                  <Label htmlFor="bulk-new-enable" className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-green-500" />
+                    Новинка
+                  </Label>
+                </div>
+                {bulkEditFields.is_new && (
+                  <Switch
+                    checked={bulkEditData.is_new || false}
+                    onCheckedChange={(checked) => setBulkEditData(prev => ({ ...prev, is_new: checked }))}
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="bulk-ai-enable"
+                    checked={bulkEditFields.is_ai_recommended || false}
+                    onCheckedChange={(checked) => setBulkEditFields(prev => ({ ...prev, is_ai_recommended: !!checked }))}
+                  />
+                  <Label htmlFor="bulk-ai-enable" className="flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-purple-500" />
+                    AI рекомендация
+                  </Label>
+                </div>
+                {bulkEditFields.is_ai_recommended && (
+                  <Switch
+                    checked={bulkEditData.is_ai_recommended || false}
+                    onCheckedChange={(checked) => setBulkEditData(prev => ({ ...prev, is_ai_recommended: checked }))}
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="bulk-active-enable"
+                    checked={bulkEditFields.is_active || false}
+                    onCheckedChange={(checked) => setBulkEditFields(prev => ({ ...prev, is_active: !!checked }))}
+                  />
+                  <Label htmlFor="bulk-active-enable" className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Активен (виден в каталоге)
+                  </Label>
+                </div>
+                {bulkEditFields.is_active && (
+                  <Switch
+                    checked={bulkEditData.is_active ?? true}
+                    onCheckedChange={(checked) => setBulkEditData(prev => ({ ...prev, is_active: checked }))}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkEditDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button 
+              onClick={() => bulkUpdateProducts.mutate(bulkEditData)}
+              disabled={bulkUpdateProducts.isPending || !Object.values(bulkEditFields).some(Boolean)}
+            >
+              {bulkUpdateProducts.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Применить к {selectedProducts.length} товарам
             </Button>
           </DialogFooter>
         </DialogContent>
