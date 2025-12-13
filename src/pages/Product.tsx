@@ -360,66 +360,82 @@ const Product = () => {
               {images.map((img, index) => (
                 <button
                   key={index}
-                  className={`relative w-full aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                    currentImage === index ? "border-primary" : "border-transparent hover:border-primary/50"
+                  className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all bg-muted/50 ${
+                    currentImage === index 
+                      ? "border-primary ring-2 ring-primary/20 shadow-md" 
+                      : "border-border hover:border-primary/50 hover:shadow-sm"
                   }`}
                   onClick={() => setCurrentImage(index)}
                 >
-                  <img src={img} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
-                  {index === 0 && discount > 0 && (
-                    <Badge className="absolute top-0 left-0 text-[10px] px-1 py-0 bg-destructive rounded-none rounded-br">
-                      НГ на ВБ
-                    </Badge>
-                  )}
+                  <img 
+                    src={img} 
+                    alt={`${product.name} ${index + 1}`} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder.svg";
+                    }}
+                  />
                 </button>
               ))}
             </div>
 
             {/* Center: Main Image / 3D Viewer */}
             <div className="lg:col-span-5">
-              <div className="relative aspect-square rounded-xl bg-muted overflow-hidden sticky top-4">
+              <div className="relative aspect-square rounded-2xl bg-card border overflow-hidden sticky top-4 shadow-sm">
                 {show3DViewer && product.model_3d_url ? (
                   <Product3DViewer modelUrl={product.model_3d_url} productName={product.name} />
                 ) : (
                   <>
-                    <img 
-                      src={images[currentImage]} 
-                      alt={product.name}
-                      className="w-full h-full object-contain"
-                    />
+                    {/* Image with fallback */}
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted/50 to-muted">
+                      <img 
+                        src={images[currentImage]} 
+                        alt={product.name}
+                        className="w-full h-full object-contain p-4"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/placeholder.svg";
+                        }}
+                      />
+                    </div>
                     
                     {images.length > 1 && (
                       <>
                         <Button
                           variant="secondary"
                           size="icon"
-                          className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background border"
                           onClick={prevImage}
                         >
-                          <ChevronLeft className="h-5 w-5" />
+                          <ChevronLeft className="h-6 w-6" />
                         </Button>
                         <Button
                           variant="secondary"
                           size="icon"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background border"
                           onClick={nextImage}
                         >
-                          <ChevronRight className="h-5 w-5" />
+                          <ChevronRight className="h-6 w-6" />
                         </Button>
                       </>
                     )}
 
                     {discount > 0 && (
-                      <Badge className="absolute top-4 left-4 bg-destructive">-{discount}%</Badge>
+                      <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-sm px-3 py-1 shadow-md">
+                        -{discount}%
+                      </Badge>
                     )}
 
                     {/* Mobile thumbnails */}
-                    <div className="lg:hidden absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+                    <div className="lg:hidden absolute bottom-4 left-0 right-0 flex justify-center gap-2">
                       {images.map((_, index) => (
                         <button
                           key={index}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            currentImage === index ? "bg-primary" : "bg-muted-foreground/30"
+                          className={`w-2.5 h-2.5 rounded-full transition-all shadow-sm ${
+                            currentImage === index 
+                              ? "bg-primary scale-110" 
+                              : "bg-background/80 border border-border hover:bg-background"
                           }`}
                           onClick={() => setCurrentImage(index)}
                         />
@@ -433,7 +449,7 @@ const Product = () => {
                   <Button
                     variant={show3DViewer ? "default" : "secondary"}
                     size="sm"
-                    className="absolute top-4 right-4 gap-2"
+                    className="absolute top-4 right-4 gap-2 shadow-md"
                     onClick={() => setShow3DViewer(!show3DViewer)}
                   >
                     <Box className="h-4 w-4" />
@@ -511,47 +527,88 @@ const Product = () => {
 
             {/* Right: Buy Card (Sticky) */}
             <div className="lg:col-span-2">
-              <Card className="sticky top-4">
-                <CardContent className="p-4 space-y-4">
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-primary">
+              <Card className="sticky top-4 shadow-lg border-2">
+                <CardContent className="p-5 space-y-5">
+                  {/* Price Section */}
+                  <div className="space-y-2">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-3xl font-bold text-primary">
                         {product.price.toLocaleString()} ₽
                       </span>
                     </div>
                     {product.old_price && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground line-through">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg text-muted-foreground line-through">
                           {product.old_price.toLocaleString()} ₽
                         </span>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge className="bg-destructive/10 text-destructive border-destructive/20">
                           -{discount}%
                         </Badge>
                       </div>
                     )}
                     {discount > 0 && (
-                      <p className="text-xs text-green-600 flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        Хорошая цена
-                      </p>
+                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950/30 rounded-lg px-3 py-2">
+                        <Check className="h-4 w-4" />
+                        <span className="font-medium">Выгодное предложение</span>
+                      </div>
                     )}
                   </div>
 
-                  <Button className="w-full h-11" onClick={addToCart} disabled={product.stock_count === 0}>
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Добавить в корзину
-                  </Button>
-                  
-                  <Button variant="outline" className="w-full h-11">
-                    Купить сейчас
-                  </Button>
+                  {/* Quantity Selector */}
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                    <span className="text-sm text-muted-foreground">Количество:</span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={quantity <= 1}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <span className="w-8 text-center font-semibold">{quantity}</span>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => setQuantity(quantity + 1)}
+                        disabled={product.stock_count !== null && quantity >= product.stock_count}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <Button 
+                      className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-shadow" 
+                      onClick={addToCart} 
+                      disabled={product.stock_count === 0}
+                    >
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      Добавить в корзину
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="w-full h-12 text-base font-semibold border-2 hover:bg-muted/50"
+                    >
+                      Купить сейчас
+                    </Button>
+                  </div>
 
                   {/* Subscription Button */}
                   <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" className="w-full h-10 text-sm gap-2">
-                        <RefreshCw className="h-4 w-4" />
-                        Оформить подписку -10%
+                      <Button 
+                        variant="ghost" 
+                        className="w-full h-11 text-sm gap-2 border border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 rounded-xl"
+                      >
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                        <span>Оформить подписку</span>
+                        <Badge variant="secondary" className="ml-1 bg-primary/10 text-primary">-10%</Badge>
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -559,11 +616,15 @@ const Product = () => {
                         <DialogTitle>Оформить регулярную доставку</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-xl">
                           <img 
                             src={images[0]} 
                             alt={product.name}
                             className="w-16 h-16 rounded-lg object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/placeholder.svg";
+                            }}
                           />
                           <div>
                             <p className="font-medium">{product.name}</p>
@@ -586,7 +647,7 @@ const Product = () => {
                           </Select>
                         </div>
 
-                        <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                        <div className="p-4 bg-muted/50 rounded-xl space-y-2">
                           <div className="flex justify-between text-sm">
                             <span>Цена за единицу</span>
                             <span>{product.price.toLocaleString()} ₽</span>
@@ -613,15 +674,24 @@ const Product = () => {
                     </DialogContent>
                   </Dialog>
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Truck className="h-4 w-4" />
-                    <span>
-                      {product.stock_count > 0 ? (
-                        <>Завтра, склад продавца</>
-                      ) : (
-                        <>Под заказ 3-5 дней</>
-                      )}
-                    </span>
+                  {/* Delivery Info */}
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl text-sm">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Truck className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {product.stock_count > 0 ? "Завтра" : "3-5 дней"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {product.stock_count > 0 ? "Доставка со склада" : "Под заказ"}
+                      </p>
+                    </div>
+                    {product.stock_count > 0 && product.stock_count < 10 && (
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        Осталось {product.stock_count}
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
