@@ -58,6 +58,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableMediaItem } from "@/components/admin/SortableMediaItem";
 import { CreateBrandDialog } from "@/components/admin/CreateBrandDialog";
+import { SpecificationsEditor } from "@/components/admin/SpecificationsEditor";
 import { compressMultipleImages, formatFileSize, MEDIA_REQUIREMENTS, validateMediaFile, validateImageDimensions, isVideoFile, countMediaTypes } from "@/utils/imageCompression";
 
 interface ProductFormData {
@@ -78,6 +79,7 @@ interface ProductFormData {
   images: string[];
   meta_title: string;
   meta_description: string;
+  specifications: Record<string, string>;
 }
 
 const AdminProductEdit = () => {
@@ -127,6 +129,7 @@ const AdminProductEdit = () => {
     images: [],
     meta_title: "",
     meta_description: "",
+    specifications: {},
   });
 
   const [featuresText, setFeaturesText] = useState("");
@@ -177,6 +180,7 @@ const AdminProductEdit = () => {
           images: data.images || [],
           meta_title: "",
           meta_description: "",
+          specifications: (data.specifications as Record<string, string>) || {},
         });
         setFeaturesText(data.features?.join("\n") || "");
       }
@@ -452,6 +456,7 @@ const AdminProductEdit = () => {
         is_ai_recommended: formData.is_ai_recommended,
         features: featuresText ? featuresText.split('\n').filter(Boolean) : [],
         images: formData.images,
+        specifications: formData.specifications,
       };
 
       if (isNew) {
@@ -753,7 +758,7 @@ const AdminProductEdit = () => {
                       <p className="text-xs text-muted-foreground text-right">Без ограничений</p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Характеристики</Label>
+                      <Label>Особенности (для описания)</Label>
                       <Textarea
                         value={featuresText}
                         onChange={(e) => setFeaturesText(e.target.value)}
@@ -770,6 +775,12 @@ const AdminProductEdit = () => {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Specifications Editor */}
+                <SpecificationsEditor
+                  specifications={formData.specifications}
+                  onChange={(specs) => setFormData(prev => ({ ...prev, specifications: specs }))}
+                />
 
                 <Card>
                   <CardHeader className="pb-3">
