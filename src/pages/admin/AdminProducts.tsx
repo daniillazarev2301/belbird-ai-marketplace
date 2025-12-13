@@ -67,6 +67,9 @@ interface Product {
   stock_count: number | null;
   rating: number | null;
   is_active: boolean | null;
+  is_bestseller: boolean | null;
+  is_new: boolean | null;
+  is_ai_recommended: boolean | null;
   sku: string | null;
   category_id: string | null;
   categories?: { name: string } | null;
@@ -113,6 +116,9 @@ const AdminProducts = () => {
     sku: "",
     category_id: "",
     is_active: true,
+    is_bestseller: false,
+    is_new: false,
+    is_ai_recommended: false,
   });
 
   // Fetch products
@@ -170,6 +176,9 @@ const AdminProducts = () => {
         sku: data.sku || null,
         category_id: data.category_id || null,
         is_active: data.is_active,
+        is_bestseller: data.is_bestseller,
+        is_new: data.is_new,
+        is_ai_recommended: data.is_ai_recommended,
       });
       if (error) throw error;
     },
@@ -184,7 +193,6 @@ const AdminProducts = () => {
     },
   });
 
-  // Update product mutation
   const updateProduct = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
       const { error } = await supabase
@@ -199,6 +207,9 @@ const AdminProducts = () => {
           sku: data.sku || null,
           category_id: data.category_id || null,
           is_active: data.is_active,
+          is_bestseller: data.is_bestseller,
+          is_new: data.is_new,
+          is_ai_recommended: data.is_ai_recommended,
         })
         .eq("id", id);
       if (error) throw error;
@@ -240,6 +251,9 @@ const AdminProducts = () => {
       sku: "",
       category_id: "",
       is_active: true,
+      is_bestseller: false,
+      is_new: false,
+      is_ai_recommended: false,
     });
   };
 
@@ -255,6 +269,9 @@ const AdminProducts = () => {
       sku: product.sku || "",
       category_id: product.category_id || "",
       is_active: product.is_active ?? true,
+      is_bestseller: product.is_bestseller ?? false,
+      is_new: product.is_new ?? false,
+      is_ai_recommended: product.is_ai_recommended ?? false,
     });
   };
 
@@ -430,7 +447,20 @@ const AdminProducts = () => {
                               Нет
                             </div>
                           )}
-                          <span className="font-medium text-sm line-clamp-1">{product.name}</span>
+                          <div>
+                            <span className="font-medium text-sm line-clamp-1">{product.name}</span>
+                            <div className="flex gap-1 mt-1">
+                              {product.is_bestseller && (
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0">Хит</Badge>
+                              )}
+                              {product.is_new && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">Новинка</Badge>
+                              )}
+                              {product.is_ai_recommended && (
+                                <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-0">AI</Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -588,12 +618,35 @@ const AdminProducts = () => {
                 rows={3}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: !!checked })}
-              />
-              <Label>Активен (показывать на сайте)</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: !!checked })}
+                />
+                <Label>Активен</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={formData.is_bestseller}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_bestseller: !!checked })}
+                />
+                <Label>Хит продаж</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={formData.is_new}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_new: !!checked })}
+                />
+                <Label>Новинка</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={formData.is_ai_recommended}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_ai_recommended: !!checked })}
+                />
+                <Label>AI рекомендация</Label>
+              </div>
             </div>
           </div>
           <DialogFooter>

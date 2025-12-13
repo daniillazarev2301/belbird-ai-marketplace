@@ -1,52 +1,21 @@
-import { Play, Plus } from "lucide-react";
+import { Play, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface StoryProps {
+interface Story {
   id: string;
   title: string;
   thumbnail: string;
+  content?: string;
+  link?: string;
   isNew?: boolean;
   isViewed?: boolean;
 }
 
-const storyData: StoryProps[] = [
-  {
-    id: "1",
-    title: "Новинки недели",
-    thumbnail: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=300&fit=crop",
-    isNew: true,
-  },
-  {
-    id: "2",
-    title: "Уход за кошкой",
-    thumbnail: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=300&fit=crop",
-  },
-  {
-    id: "3",
-    title: "Идеи декора",
-    thumbnail: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=200&h=300&fit=crop",
-    isViewed: true,
-  },
-  {
-    id: "4",
-    title: "Сезон посадки",
-    thumbnail: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=300&fit=crop",
-  },
-  {
-    id: "5",
-    title: "Лайфхаки",
-    thumbnail: "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=200&h=300&fit=crop",
-  },
-  {
-    id: "6",
-    title: "Обзоры",
-    thumbnail: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=300&fit=crop",
-    isViewed: true,
-  },
-];
-
-const StoryItem = ({ story, onClick }: { story: StoryProps; onClick: () => void }) => (
+const StoryItem = ({ story, onClick }: { story: Story; onClick: () => void }) => (
   <button
     onClick={onClick}
     className="flex flex-col items-center gap-2 shrink-0"
@@ -62,7 +31,7 @@ const StoryItem = ({ story, onClick }: { story: StoryProps; onClick: () => void 
     >
       <div className="w-full h-full rounded-full overflow-hidden bg-background p-0.5">
         <img
-          src={story.thumbnail}
+          src={story.thumbnail || "/placeholder.svg"}
           alt={story.title}
           className="w-full h-full rounded-full object-cover"
         />
@@ -80,22 +49,60 @@ const StoryItem = ({ story, onClick }: { story: StoryProps; onClick: () => void 
 );
 
 const StoriesSection = () => {
-  const [selectedStory, setSelectedStory] = useState<StoryProps | null>(null);
+  const [selectedStory, setSelectedStory] = useState<Story | null>(null);
+
+  // For now, stories can be managed via pages or a dedicated stories table in the future
+  // This component will show categories as stories for now
+  const { data: stories = [], isLoading } = useQuery({
+    queryKey: ["home-stories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, image_url, slug")
+        .not("image_url", "is", null)
+        .order("sort_order", { ascending: true })
+        .limit(8);
+
+      if (error) throw error;
+
+      return (data || []).map((cat, index) => ({
+        id: cat.id,
+        title: cat.name,
+        thumbnail: cat.image_url || "/placeholder.svg",
+        link: `/catalog/${cat.slug}`,
+        isNew: index === 0,
+        isViewed: false,
+      })) as Story[];
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <section className="py-4 md:py-6 border-b border-border">
+        <div className="container px-4 md:px-6">
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2 shrink-0">
+                <Skeleton className="w-16 h-16 md:w-20 md:h-20 rounded-full" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (stories.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-4 md:py-6 border-b border-border">
       <div className="container px-4 md:px-6">
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-          {/* Add Story Button */}
-          <button className="flex flex-col items-center gap-2 shrink-0">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
-              <Plus className="h-6 w-6" />
-            </div>
-            <span className="text-xs text-muted-foreground">Создать</span>
-          </button>
-
-          {/* Stories */}
-          {storyData.map((story) => (
+          {/* Stories from categories */}
+          {stories.map((story) => (
             <StoryItem
               key={story.id}
               story={story}
@@ -136,21 +143,15 @@ const StoriesSection = () => {
                 </div>
               </div>
 
-              {/* Play Button */}
-              <button className="absolute inset-0 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-primary-foreground/20 backdrop-blur flex items-center justify-center">
-                  <Play className="h-8 w-8 text-primary-foreground fill-current" />
-                </div>
-              </button>
-
               {/* CTA */}
               <div className="absolute bottom-4 left-4 right-4">
-                <button 
+                <a 
+                  href={selectedStory.link || "/catalog"}
                   onClick={() => setSelectedStory(null)}
-                  className="w-full py-3 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                  className="block w-full py-3 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors text-center"
                 >
                   Смотреть товары
-                </button>
+                </a>
               </div>
             </div>
           )}
