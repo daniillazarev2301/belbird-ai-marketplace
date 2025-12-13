@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { exportToExcel, formatDataForExport } from "@/utils/exportToExcel";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface OrderItem {
   id: string;
@@ -179,12 +180,14 @@ const AdminOrders = () => {
         })
         .eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
       toast.success("Заказ обновлён");
       setEditDialogOpen(false);
       setSelectedOrder(null);
+      logAdminActivity({ action: "update", entityType: "order", entityId: id, details: { status: editFormData.status } });
     },
     onError: (error: Error) => {
       toast.error("Ошибка: " + error.message);
@@ -199,10 +202,12 @@ const AdminOrders = () => {
         .update({ status })
         .eq("id", id);
       if (error) throw error;
+      return { id, status };
     },
-    onSuccess: () => {
+    onSuccess: ({ id, status }) => {
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
       toast.success("Статус обновлён");
+      logAdminActivity({ action: "update", entityType: "order", entityId: id, details: { status } });
     },
     onError: (error: Error) => {
       toast.error("Ошибка: " + error.message);

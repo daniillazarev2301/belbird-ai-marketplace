@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { exportToExcel, formatDataForExport } from "@/utils/exportToExcel";
 import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 
 interface Category {
   id: string;
@@ -121,20 +122,22 @@ const AdminCategories = () => {
   // Create category
   const createCategory = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("categories").insert({
+      const { data: newCat, error } = await supabase.from("categories").insert({
         name: data.name,
         slug: data.slug || data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-zа-я0-9-]/gi, ""),
         description: data.description || null,
         parent_id: data.parent_id || null,
         image_url: data.image_url || null,
-      });
+      }).select("id").single();
       if (error) throw error;
+      return newCat;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin-categories-tree"] });
       toast.success("Категория создана");
       setAddDialogOpen(false);
       resetForm();
+      logAdminActivity({ action: "create", entityType: "category", entityId: data?.id, details: { name: formData.name } });
     },
     onError: (error) => {
       toast.error("Ошибка: " + error.message);
@@ -155,12 +158,14 @@ const AdminCategories = () => {
         })
         .eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["admin-categories-tree"] });
       toast.success("Категория обновлена");
       setEditCategory(null);
       resetForm();
+      logAdminActivity({ action: "update", entityType: "category", entityId: id, details: { name: formData.name } });
     },
     onError: (error) => {
       toast.error("Ошибка: " + error.message);
@@ -172,10 +177,12 @@ const AdminCategories = () => {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("categories").delete().eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["admin-categories-tree"] });
       toast.success("Категория удалена");
+      logAdminActivity({ action: "delete", entityType: "category", entityId: id });
     },
     onError: (error) => {
       toast.error("Ошибка: " + error.message);

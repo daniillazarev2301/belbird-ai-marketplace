@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.pickup-points]
 verify_jwt = false
+
+[functions.generate-reviews]
+verify_jwt = false
+
+[functions.send-push]
+verify_jwt = false
+
+[functions.visual-search]
+verify_jwt = false
