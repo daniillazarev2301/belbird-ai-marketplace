@@ -67,10 +67,51 @@ const Product = () => {
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [subscriptionFrequency, setSubscriptionFrequency] = useState("30");
   const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProduct();
+    checkFavoriteStatus();
   }, [id]);
+
+  // Check if user is authenticated and if product is in favorites
+  const checkFavoriteStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUserId(user?.id || null);
+    
+    if (user && id) {
+      // First try to get product by slug
+      const { data: productData } = await supabase
+        .from("products")
+        .select("id")
+        .eq("slug", id)
+        .single();
+      
+      const productId = productData?.id || id;
+      
+      const { data } = await supabase
+        .from("favorites")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("product_id", productId)
+        .maybeSingle();
+      
+      setIsFavorite(!!data);
+    }
+  };
+
+  // Record product view
+  const recordProductView = async (productId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const sessionId = localStorage.getItem("session_id") || crypto.randomUUID();
+    localStorage.setItem("session_id", sessionId);
+
+    await supabase.from("product_views").insert({
+      product_id: productId,
+      user_id: user?.id || null,
+      session_id: user ? null : sessionId
+    });
+  };
 
   const loadProduct = async () => {
     if (!id) return;
@@ -108,6 +149,10 @@ const Product = () => {
       console.error("Error loading product:", error);
     } else {
       setProduct(data as ProductData);
+      // Record product view
+      if (data?.id) {
+        recordProductView(data.id);
+      }
     }
     setLoading(false);
   };
@@ -141,11 +186,42 @@ const Product = () => {
     });
   };
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    toast({
-      title: isFavorite ? "Удалено из избранного" : "Добавлено в избранное",
-    });
+  const toggleFavorite = async () => {
+    if (!userId) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите в аккаунт, чтобы добавить в избранное",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!product) return;
+
+    try {
+      if (isFavorite) {
+        await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", userId)
+          .eq("product_id", product.id);
+        setIsFavorite(false);
+        toast({ title: "Удалено из избранного" });
+      } else {
+        await supabase
+          .from("favorites")
+          .insert({ user_id: userId, product_id: product.id });
+        setIsFavorite(true);
+        toast({ title: "Добавлено в избранное" });
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить избранное",
+        variant: "destructive"
+      });
+    }
   };
 
   const createSubscription = async () => {

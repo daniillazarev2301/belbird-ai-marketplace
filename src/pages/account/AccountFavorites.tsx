@@ -44,7 +44,7 @@ const AccountFavorites = () => {
 
   useEffect(() => {
     fetchFavorites();
-  }, []);
+  }, [sortBy]);
 
   const fetchFavorites = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -57,6 +57,7 @@ const AccountFavorites = () => {
       .from('favorites')
       .select(`
         product_id,
+        created_at,
         products (
           id, name, slug, price, old_price, images, rating, review_count, stock_count
         )
@@ -64,9 +65,27 @@ const AccountFavorites = () => {
       .eq('user_id', user.id);
 
     if (!error && data) {
-      const products = data
-        .map((f: any) => f.products)
-        .filter(Boolean) as FavoriteProduct[];
+      let products = data
+        .map((f: any) => ({ ...f.products, added_at: f.created_at }))
+        .filter(Boolean) as (FavoriteProduct & { added_at: string })[];
+      
+      // Apply sorting
+      switch (sortBy) {
+        case 'price_asc':
+          products.sort((a, b) => a.price - b.price);
+          break;
+        case 'price_desc':
+          products.sort((a, b) => b.price - a.price);
+          break;
+        case 'rating':
+          products.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          break;
+        case 'added':
+        default:
+          products.sort((a, b) => new Date(b.added_at).getTime() - new Date(a.added_at).getTime());
+          break;
+      }
+      
       setFavorites(products);
     }
     setLoading(false);
