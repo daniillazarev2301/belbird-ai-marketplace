@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import AccountLayout from "@/components/account/AccountLayout";
 import { Button } from "@/components/ui/button";
@@ -8,17 +9,13 @@ import {
   Gift,
   Star,
   Trophy,
-  Sparkles,
-  ChevronRight,
   Check,
   Lock,
   Coins,
-  ShoppingBag,
-  PawPrint,
-  Calendar,
   Users,
   Share2,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const levels = [
   { name: "Новичок", minSpent: 0, cashback: 3, color: "bg-muted" },
@@ -27,29 +24,42 @@ const levels = [
   { name: "Platinum", minSpent: 150000, cashback: 10, color: "bg-primary" },
 ];
 
-const achievements = [
-  { id: "1", name: "Первый заказ", description: "Сделайте первую покупку", icon: ShoppingBag, earned: true, reward: 100 },
-  { id: "2", name: "Профиль питомца", description: "Добавьте профиль питомца", icon: PawPrint, earned: true, reward: 200 },
-  { id: "3", name: "Отзыв эксперта", description: "Оставьте 5 отзывов", icon: Star, earned: true, reward: 300 },
-  { id: "4", name: "Подписчик", description: "Оформите подписку на товар", icon: Calendar, earned: true, reward: 500 },
-  { id: "5", name: "Социальный", description: "Поделитесь товаром в соцсетях", icon: Share2, earned: false, reward: 150 },
-  { id: "6", name: "Друзья", description: "Пригласите 3 друзей", icon: Users, earned: false, reward: 1000 },
-];
-
-const transactions = [
-  { id: "1", date: "12.12.2024", description: "Кэшбэк за заказ #12345", amount: 523, type: "earn" },
-  { id: "2", date: "10.12.2024", description: "Достижение: Подписчик", amount: 500, type: "earn" },
-  { id: "3", date: "05.12.2024", description: "Списание при оплате", amount: -800, type: "spend" },
-  { id: "4", date: "01.12.2024", description: "Кэшбэк за заказ #12340", amount: 412, type: "earn" },
-  { id: "5", date: "25.11.2024", description: "Бонус ко дню рождения", amount: 500, type: "earn" },
-];
-
 const AccountLoyalty = () => {
-  const currentLevel = 2; // VIP (index)
-  const currentSpent = 78500;
+  const [profile, setProfile] = useState<{ loyalty_points: number | null } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('loyalty_points')
+        .eq('id', user.id)
+        .single();
+      setProfile(data);
+    }
+    setLoading(false);
+  };
+
+  const bonusBalance = profile?.loyalty_points || 0;
+  const currentLevel = 0; // Новичок по умолчанию
+  const currentSpent = 0;
   const nextLevelSpent = levels[currentLevel + 1]?.minSpent || levels[currentLevel].minSpent;
-  const progress = ((currentSpent - levels[currentLevel].minSpent) / (nextLevelSpent - levels[currentLevel].minSpent)) * 100;
-  const bonusBalance = 2450;
+  const progress = nextLevelSpent > 0 ? (currentSpent / nextLevelSpent) * 100 : 0;
+
+  if (loading) {
+    return (
+      <AccountLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AccountLayout>
+    );
+  }
 
   return (
     <>
@@ -82,7 +92,7 @@ const AccountLoyalty = () => {
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="secondary" className="gap-2">
+                  <Button variant="secondary" className="gap-2" disabled={bonusBalance === 0}>
                     <Gift className="h-4 w-4" />
                     Потратить бонусы
                   </Button>
@@ -146,102 +156,17 @@ const AccountLoyalty = () => {
 
               {/* Current benefits */}
               <div className="mt-6 p-4 rounded-lg bg-accent/50">
-                <h4 className="font-medium mb-3">Ваши привилегии VIP</h4>
+                <h4 className="font-medium mb-3">Ваши привилегии</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    <span>Кэшбэк 7% с покупок</span>
+                    <span>Кэшбэк {levels[currentLevel].cashback}% с покупок</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
-                    <span>Бесплатная доставка от 3000 ₽</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Ранний доступ к акциям</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    <span>Подарок на день рождения</span>
+                    <span>Бесплатная доставка от 5000 ₽</span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Achievements */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-secondary" />
-                  Достижения
-                </CardTitle>
-                <span className="text-sm text-muted-foreground">
-                  {achievements.filter((a) => a.earned).length}/{achievements.length}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {achievements.map((achievement) => {
-                  const Icon = achievement.icon;
-                  return (
-                    <div
-                      key={achievement.id}
-                      className={`p-4 rounded-lg border text-center transition-colors ${
-                        achievement.earned
-                          ? "border-primary/30 bg-primary/5"
-                          : "border-border bg-muted/30 opacity-60"
-                      }`}
-                    >
-                      <div
-                        className={`w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                          achievement.earned ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <p className="font-medium text-sm mb-0.5">{achievement.name}</p>
-                      <p className="text-xs text-muted-foreground mb-2">{achievement.description}</p>
-                      <Badge variant={achievement.earned ? "default" : "outline"} className="text-xs">
-                        {achievement.earned ? `+${achievement.reward} ₽ получено` : `+${achievement.reward} ₽`}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Transaction History */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">История бонусов</CardTitle>
-                <Button variant="ghost" size="sm" className="gap-1">
-                  Все операции
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div>
-                      <p className="text-sm font-medium">{tx.description}</p>
-                      <p className="text-xs text-muted-foreground">{tx.date}</p>
-                    </div>
-                    <span
-                      className={`font-semibold ${
-                        tx.type === "earn" ? "text-primary" : "text-muted-foreground"
-                      }`}
-                    >
-                      {tx.type === "earn" ? "+" : ""}{tx.amount} ₽
-                    </span>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
