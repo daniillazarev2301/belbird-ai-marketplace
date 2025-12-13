@@ -27,9 +27,10 @@ const Header = () => {
   }, []);
 
   const navLinks = [
-    { label: "Любимцы", href: "/catalog/pets" },
-    { label: "Уют и Дом", href: "/catalog/home" },
-    { label: "Сад и Огород", href: "/catalog/garden" },
+    { label: "Собаки", href: "/catalog/dogs" },
+    { label: "Кошки", href: "/catalog/cats" },
+    { label: "Птицы", href: "/catalog/birds" },
+    { label: "Сельхоз", href: "/catalog/farm" },
     { label: "Акции", href: "/catalog?sale=true", highlight: true },
   ];
 

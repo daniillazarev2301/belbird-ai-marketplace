@@ -132,14 +132,14 @@ const AIRecommendations = () => {
 
         {/* Not logged in banner */}
         {!hasPets && (
-          <div className="mb-8 p-4 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-4">
+          <div className="mb-8 p-4 rounded-lg bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="p-3 rounded-full bg-primary/20">
               <PawPrint className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
               <h3 className="font-semibold">Получите персональные рекомендации</h3>
               <p className="text-sm text-muted-foreground">
-                Добавьте профиль питомца, чтобы видеть товары, подобранные специально для вас
+                Добавьте профиль питомца — собаки, кошки, попугая или даже кур — и получайте товары, подобранные специально для вас
               </p>
             </div>
             <Link to="/account/pets">

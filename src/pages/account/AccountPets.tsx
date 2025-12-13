@@ -45,7 +45,18 @@ const typeLabels: Record<string, string> = {
   cat: "Кошка",
   dog: "Собака",
   bird: "Птица",
+  parrot: "Попугай",
   small: "Грызун",
+  hamster: "Хомяк",
+  rabbit: "Кролик",
+  fish: "Рыбка",
+  chicken: "Курица",
+  chick: "Цыплёнок",
+  duck: "Утка",
+  goose: "Гусь",
+  turkey: "Индейка",
+  other_farm: "Другое (сельхоз)",
+  other: "Другое",
 };
 
 const AccountPets = () => {
@@ -389,10 +400,21 @@ const PetForm = ({ pet, onClose, onSuccess }: PetFormProps) => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="cat">Кошка</SelectItem>
-              <SelectItem value="dog">Собака</SelectItem>
-              <SelectItem value="bird">Птица</SelectItem>
-              <SelectItem value="small">Грызун</SelectItem>
+              <SelectItem value="dog">🐕 Собака</SelectItem>
+              <SelectItem value="cat">🐱 Кошка</SelectItem>
+              <SelectItem value="parrot">🦜 Попугай</SelectItem>
+              <SelectItem value="bird">🐦 Другая птица</SelectItem>
+              <SelectItem value="hamster">🐹 Хомяк</SelectItem>
+              <SelectItem value="rabbit">🐰 Кролик</SelectItem>
+              <SelectItem value="small">🐁 Другой грызун</SelectItem>
+              <SelectItem value="fish">🐟 Рыбка</SelectItem>
+              <SelectItem value="chicken">🐔 Курица</SelectItem>
+              <SelectItem value="chick">🐤 Цыплёнок</SelectItem>
+              <SelectItem value="duck">🦆 Утка</SelectItem>
+              <SelectItem value="goose">🪿 Гусь</SelectItem>
+              <SelectItem value="turkey">🦃 Индейка</SelectItem>
+              <SelectItem value="other_farm">🐄 Другое (сельхоз)</SelectItem>
+              <SelectItem value="other">❓ Другое</SelectItem>
             </SelectContent>
           </Select>
         </div>
