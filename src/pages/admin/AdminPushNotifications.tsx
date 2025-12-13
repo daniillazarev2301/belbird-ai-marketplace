@@ -33,7 +33,8 @@ const AdminPushNotifications = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [url, setUrl] = useState('');
-  const [audience, setAudience] = useState('all');
+  const [audience, setAudience] = useState<'all' | 'active_buyers' | 'inactive' | 'category'>('all');
+  const [categoryId, setCategoryId] = useState('');
   const [isSending, setIsSending] = useState(false);
 
   // Get subscription count
@@ -46,6 +47,20 @@ const AdminPushNotifications = () => {
       
       if (error) throw error;
       return count || 0;
+    }
+  });
+
+  // Get categories for targeting
+  const { data: categories } = useQuery({
+    queryKey: ['categories-for-push'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
     }
   });
 
@@ -65,7 +80,8 @@ const AdminPushNotifications = () => {
           title,
           body,
           url: url || '/',
-          // userId would be passed if targeting specific users
+          segment: audience,
+          categoryId: audience === 'category' ? categoryId : undefined
         }
       });
 
@@ -188,21 +204,48 @@ const AdminPushNotifications = () => {
 
                 <div className="space-y-2">
                   <Label>Аудитория</Label>
-                  <Select value={audience} onValueChange={setAudience}>
+                  <Select value={audience} onValueChange={(v) => setAudience(v as typeof audience)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Все подписчики</SelectItem>
-                      <SelectItem value="active" disabled>
-                        Активные покупатели (скоро)
+                      <SelectItem value="active_buyers">
+                        Активные покупатели (30 дней)
                       </SelectItem>
-                      <SelectItem value="inactive" disabled>
-                        Неактивные пользователи (скоро)
+                      <SelectItem value="inactive">
+                        Неактивные пользователи (60+ дней)
+                      </SelectItem>
+                      <SelectItem value="category">
+                        По категории товаров
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {audience === 'active_buyers' && 'Пользователи, совершившие покупку за последние 30 дней'}
+                    {audience === 'inactive' && 'Пользователи без покупок более 60 дней'}
+                    {audience === 'category' && 'Пользователи, интересовавшиеся выбранной категорией'}
+                    {audience === 'all' && 'Все пользователи с включёнными уведомлениями'}
+                  </p>
                 </div>
+
+                {audience === 'category' && (
+                  <div className="space-y-2">
+                    <Label>Категория</Label>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите категорию" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories?.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <Separator />
 
