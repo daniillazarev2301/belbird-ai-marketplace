@@ -58,6 +58,7 @@ const contentItems = [
   { title: "Страницы", url: "/admin/pages", icon: FileText },
   { title: "Блог", url: "/admin/blog", icon: BookOpen },
   { title: "Сторис", url: "/admin/stories", icon: PlayCircle },
+  { title: "Промо-блоки", url: "/admin/promo-cards", icon: Tags },
 ];
 
 const salesItems = [
