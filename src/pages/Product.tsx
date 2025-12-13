@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { 
   ChevronLeft, ChevronRight, Heart, Share2, ShoppingCart, Truck, Shield, RotateCcw, 
-  Star, MessageSquare, Plus, Minus, Check, Clock, ArrowLeft, Package
+  Star, MessageSquare, Plus, Minus, Check, Clock, ArrowLeft, Package, RefreshCw, Box
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -13,6 +13,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
@@ -20,6 +22,7 @@ import { ReviewForm } from "@/components/product/ReviewForm";
 import { ReviewList } from "@/components/product/ReviewList";
 import { RichContentDisplay } from "@/components/product/RichContentDisplay";
 import { RelatedProducts } from "@/components/product/RelatedProducts";
+import Product3DViewer from "@/components/product/Product3DViewer";
 
 interface RichContentBlock {
   id: string;
@@ -46,6 +49,7 @@ interface ProductData {
   rich_content?: unknown;
   category_id?: string;
   brand_id?: string;
+  model_3d_url?: string;
   brand?: { name: string; slug: string };
   category?: { name: string; slug: string };
 }
@@ -59,6 +63,10 @@ const Product = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [show3DViewer, setShow3DViewer] = useState(false);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [subscriptionFrequency, setSubscriptionFrequency] = useState("30");
+  const [isCreatingSubscription, setIsCreatingSubscription] = useState(false);
 
   useEffect(() => {
     loadProduct();
@@ -72,7 +80,7 @@ const Product = () => {
     let query = supabase
       .from("products")
       .select(`
-        id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content, category_id, brand_id,
+        id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content, category_id, brand_id, model_3d_url,
         brand:brands(name, slug),
         category:categories(name, slug)
       `)
@@ -85,7 +93,7 @@ const Product = () => {
       const result = await supabase
         .from("products")
         .select(`
-          id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content, category_id, brand_id,
+          id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku, specifications, rich_content, category_id, brand_id, model_3d_url,
           brand:brands(name, slug),
           category:categories(name, slug)
         `)
@@ -138,6 +146,52 @@ const Product = () => {
     toast({
       title: isFavorite ? "Удалено из избранного" : "Добавлено в избранное",
     });
+  };
+
+  const createSubscription = async () => {
+    if (!product) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите в аккаунт, чтобы оформить подписку",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreatingSubscription(true);
+    try {
+      const nextDeliveryDate = new Date();
+      nextDeliveryDate.setDate(nextDeliveryDate.getDate() + parseInt(subscriptionFrequency));
+
+      const { error } = await supabase.from("subscriptions").insert({
+        user_id: user.id,
+        product_id: product.id,
+        quantity: quantity,
+        frequency_days: parseInt(subscriptionFrequency),
+        next_delivery_date: nextDeliveryDate.toISOString().split('T')[0],
+        discount_percent: 10
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Подписка оформлена!",
+        description: `${product.name} будет доставляться каждые ${subscriptionFrequency} дней со скидкой 10%`,
+      });
+      setSubscriptionDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось оформить подписку",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingSubscription(false);
+    }
   };
 
   if (loading) {
@@ -245,52 +299,71 @@ const Product = () => {
               ))}
             </div>
 
-            {/* Center: Main Image */}
+            {/* Center: Main Image / 3D Viewer */}
             <div className="lg:col-span-5">
               <div className="relative aspect-square rounded-xl bg-muted overflow-hidden sticky top-4">
-                <img 
-                  src={images[currentImage]} 
-                  alt={product.name}
-                  className="w-full h-full object-contain"
-                />
-                
-                {images.length > 1 && (
+                {show3DViewer && product.model_3d_url ? (
+                  <Product3DViewer modelUrl={product.model_3d_url} productName={product.name} />
+                ) : (
                   <>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
-                      onClick={prevImage}
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
-                      onClick={nextImage}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </Button>
+                    <img 
+                      src={images[currentImage]} 
+                      alt={product.name}
+                      className="w-full h-full object-contain"
+                    />
+                    
+                    {images.length > 1 && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+                          onClick={prevImage}
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+                          onClick={nextImage}
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </Button>
+                      </>
+                    )}
+
+                    {discount > 0 && (
+                      <Badge className="absolute top-4 left-4 bg-destructive">-{discount}%</Badge>
+                    )}
+
+                    {/* Mobile thumbnails */}
+                    <div className="lg:hidden absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+                      {images.map((_, index) => (
+                        <button
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            currentImage === index ? "bg-primary" : "bg-muted-foreground/30"
+                          }`}
+                          onClick={() => setCurrentImage(index)}
+                        />
+                      ))}
+                    </div>
                   </>
                 )}
 
-                {discount > 0 && (
-                  <Badge className="absolute top-4 left-4 bg-destructive">-{discount}%</Badge>
+                {/* 3D Toggle Button */}
+                {product.model_3d_url && (
+                  <Button
+                    variant={show3DViewer ? "default" : "secondary"}
+                    size="sm"
+                    className="absolute top-4 right-4 gap-2"
+                    onClick={() => setShow3DViewer(!show3DViewer)}
+                  >
+                    <Box className="h-4 w-4" />
+                    {show3DViewer ? "Фото" : "3D"}
+                  </Button>
                 )}
-
-                {/* Mobile thumbnails */}
-                <div className="lg:hidden absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
-                  {images.map((_, index) => (
-                    <button
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        currentImage === index ? "bg-primary" : "bg-muted-foreground/30"
-                      }`}
-                      onClick={() => setCurrentImage(index)}
-                    />
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -396,6 +469,73 @@ const Product = () => {
                   <Button variant="outline" className="w-full h-11">
                     Купить сейчас
                   </Button>
+
+                  {/* Subscription Button */}
+                  <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" className="w-full h-10 text-sm gap-2">
+                        <RefreshCw className="h-4 w-4" />
+                        Оформить подписку -10%
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Оформить регулярную доставку</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="flex items-center gap-4">
+                          <img 
+                            src={images[0]} 
+                            alt={product.name}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">Количество: {quantity}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Частота доставки</label>
+                          <Select value={subscriptionFrequency} onValueChange={setSubscriptionFrequency}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="14">Каждые 2 недели</SelectItem>
+                              <SelectItem value="30">Каждый месяц</SelectItem>
+                              <SelectItem value="60">Каждые 2 месяца</SelectItem>
+                              <SelectItem value="90">Каждые 3 месяца</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Цена за единицу</span>
+                            <span>{product.price.toLocaleString()} ₽</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>Скидка по подписке</span>
+                            <span>-10%</span>
+                          </div>
+                          <Separator />
+                          <div className="flex justify-between font-bold">
+                            <span>Итого</span>
+                            <span>{(product.price * quantity * 0.9).toLocaleString()} ₽</span>
+                          </div>
+                        </div>
+
+                        <Button 
+                          className="w-full" 
+                          onClick={createSubscription}
+                          disabled={isCreatingSubscription}
+                        >
+                          {isCreatingSubscription ? "Оформление..." : "Оформить подписку"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Truck className="h-4 w-4" />
