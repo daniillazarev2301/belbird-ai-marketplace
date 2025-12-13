@@ -497,6 +497,7 @@ export type Database = {
           price: number
           rating: number | null
           review_count: number | null
+          rich_content: Json | null
           sku: string | null
           slug: string
           specifications: Json | null
@@ -520,6 +521,7 @@ export type Database = {
           price: number
           rating?: number | null
           review_count?: number | null
+          rich_content?: Json | null
           sku?: string | null
           slug: string
           specifications?: Json | null
@@ -543,6 +545,7 @@ export type Database = {
           price?: number
           rating?: number | null
           review_count?: number | null
+          rich_content?: Json | null
           sku?: string | null
           slug?: string
           specifications?: Json | null
