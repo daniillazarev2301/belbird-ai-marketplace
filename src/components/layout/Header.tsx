@@ -1,4 +1,4 @@
-import { Search, ShoppingCart, User, Menu, Heart, Mic } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, Heart, Mic, Percent } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
+import { CategoryMenu } from "./CategoryMenu";
 
 interface SearchResult {
   id: string;
@@ -74,11 +75,7 @@ const Header = () => {
   }, [searchQuery]);
 
   const navLinks = [
-    { label: "Собаки", href: "/catalog/dogs" },
-    { label: "Кошки", href: "/catalog/cats" },
-    { label: "Птицы", href: "/catalog/birds" },
-    { label: "Сельхоз", href: "/catalog/farm" },
-    { label: "Акции", href: "/catalog?sale=true", highlight: true },
+    { label: "Акции", href: "/catalog?sale=true", highlight: true, icon: Percent },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -109,18 +106,20 @@ const Header = () => {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-6">
+        <nav className="hidden lg:flex items-center gap-4">
+          <CategoryMenu />
           {navLinks.map((link) => (
             <Link
               key={link.href}
               to={link.href}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-primary",
+                "flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary",
                 link.highlight
                   ? "text-secondary font-semibold"
                   : "text-muted-foreground"
               )}
             >
+              {link.icon && <link.icon className="h-4 w-4" />}
               {link.label}
             </Link>
           ))}

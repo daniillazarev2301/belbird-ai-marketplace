@@ -55,6 +55,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { exportToExcel, formatDataForExport } from "@/utils/exportToExcel";
 
 interface Profile {
   id: string;
@@ -314,7 +315,15 @@ const AdminCustomers = () => {
             <Button variant="outline" size="icon" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4" />
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => {
+                const exportData = formatDataForExport.customers(customers);
+                exportToExcel(exportData, `customers-${new Date().toISOString().split('T')[0]}`, 'Клиенты');
+                toast.success('Экспорт завершён');
+              }}
+            >
               <Download className="h-4 w-4" />
               Экспорт
             </Button>

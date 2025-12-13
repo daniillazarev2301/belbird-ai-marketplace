@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -38,10 +38,13 @@ import {
   GripVertical,
   Loader2,
   RefreshCw,
+  Download,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { exportToExcel, formatDataForExport } from "@/utils/exportToExcel";
+import { AIGenerateButton } from "@/components/admin/AIGenerateButton";
 
 interface Category {
   id: string;
@@ -239,6 +242,12 @@ const AdminCategories = () => {
     return (cat.productCount || 0) + (cat.children?.reduce((sum, child) => sum + calculateTotalProducts(child), 0) || 0);
   };
 
+  const handleExport = () => {
+    const exportData = formatDataForExport.categories(categories);
+    exportToExcel(exportData, `categories-${new Date().toISOString().split('T')[0]}`, 'Категории');
+    toast.success('Экспорт завершён');
+  };
+
   const CategoryItem = ({ category, level = 0 }: { category: Category; level?: number }) => {
     const hasChildren = category.children && category.children.length > 0;
     const isExpanded = expandedCategories.has(category.id);
@@ -319,6 +328,10 @@ const AdminCategories = () => {
           <div className="flex gap-2">
             <Button variant="outline" size="icon" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleExport}>
+              <Download className="h-4 w-4" />
+              Экспорт
             </Button>
             <Button className="gap-2" onClick={() => setAddDialogOpen(true)}>
               <Plus className="h-4 w-4" />
@@ -417,7 +430,20 @@ const AdminCategories = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Описание</Label>
+              <div className="flex items-center justify-between">
+                <Label>Описание</Label>
+                {formData.name && (
+                  <AIGenerateButton
+                    type="description"
+                    context={{ name: formData.name, currentDescription: formData.description }}
+                    onGenerated={(result) => {
+                      if (result.description) {
+                        setFormData({ ...formData, description: result.description });
+                      }
+                    }}
+                  />
+                )}
+              </div>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
