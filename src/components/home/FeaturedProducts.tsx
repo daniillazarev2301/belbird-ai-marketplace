@@ -1,4 +1,5 @@
 import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import ProductCard, { Product } from "./ProductCard";
 
 const featuredProducts: Product[] = [
@@ -103,13 +104,13 @@ const FeaturedProducts = () => {
               Рекомендуем для вас
             </h2>
           </div>
-          <a
-            href="/recommendations"
+          <Link
+            to="/catalog"
             className="hidden md:flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
           >
             Все рекомендации
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
 
         {/* Products Grid */}
@@ -120,13 +121,13 @@ const FeaturedProducts = () => {
         </div>
 
         {/* Mobile link */}
-        <a
-          href="/recommendations"
+        <Link
+          to="/catalog"
           className="flex md:hidden items-center justify-center gap-2 text-sm font-medium text-primary mt-6 py-3"
         >
           Все рекомендации
           <ArrowRight className="h-4 w-4" />
-        </a>
+        </Link>
       </div>
     </section>
   );

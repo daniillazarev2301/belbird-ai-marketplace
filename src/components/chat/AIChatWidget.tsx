@@ -161,6 +161,7 @@ const AIChatWidget = () => {
     <>
       {/* Chat Button */}
       <button
+        data-chat-trigger
         onClick={() => setIsOpen(true)}
         className={cn(
           "fixed z-50 bottom-20 lg:bottom-6 right-4 lg:right-6 flex items-center gap-2 px-4 py-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all",
