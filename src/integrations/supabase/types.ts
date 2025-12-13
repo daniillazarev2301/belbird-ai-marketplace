@@ -132,6 +132,42 @@ export type Database = {
           },
         ]
       }
+      pages: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          is_published: boolean | null
+          meta_description: string | null
+          meta_keywords: string | null
+          slug: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_keywords?: string | null
+          slug: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_keywords?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       pet_profiles: {
         Row: {
           age_years: number | null
