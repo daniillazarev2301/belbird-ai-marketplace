@@ -390,14 +390,14 @@ const AdminCategories = () => {
             <div className="space-y-2">
               <Label>Родительская категория</Label>
               <Select
-                value={formData.parent_id}
-                onValueChange={(value) => setFormData({ ...formData, parent_id: value })}
+                value={formData.parent_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, parent_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Без родителя (корневая)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Без родителя (корневая)</SelectItem>
+                  <SelectItem value="none">Без родителя (корневая)</SelectItem>
                   {flatCategories
                     .filter((c) => c.id !== editCategory?.id)
                     .map((cat) => (
