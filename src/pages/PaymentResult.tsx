@@ -146,6 +146,40 @@ const PaymentResult = () => {
     checkPaymentStatus();
   }, [orderId, paymentResult]);
 
+  // Realtime subscription for order status updates
+  useEffect(() => {
+    if (!orderId || status === "success" || status === "error") return;
+
+    const channel = supabase
+      .channel(`order-${orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${orderId}`,
+        },
+        (payload) => {
+          console.log('Order updated:', payload);
+          const newData = payload.new as OrderData;
+          
+          setOrder(prev => prev ? { ...prev, ...newData } : null);
+          
+          if (newData.payment_status === 'paid') {
+            setStatus('success');
+          } else if (newData.payment_status === 'failed') {
+            setStatus('failed');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, status]);
+
   const getStatusConfig = () => {
     switch (status) {
       case "success":

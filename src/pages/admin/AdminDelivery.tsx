@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -28,10 +30,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Loader2, RefreshCw, Save, Truck } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, RefreshCw, Save, Truck, Package, Settings2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface DeliveryZone {
   id: string;
@@ -55,6 +58,8 @@ const providers = [
 
 const AdminDelivery = () => {
   const queryClient = useQueryClient();
+  const { settings, updateSettings, isLoading: settingsLoading } = useSiteSettings();
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editZone, setEditZone] = useState<DeliveryZone | null>(null);
   const [formData, setFormData] = useState({
@@ -67,6 +72,29 @@ const AdminDelivery = () => {
     delivery_days_max: "",
     is_active: true,
   });
+
+  // Provider settings state
+  const [providerSettings, setProviderSettings] = useState({
+    cdek_enabled: false,
+    cdek_account: "",
+    cdek_password: "",
+    cdek_test_mode: true,
+    boxberry_enabled: false,
+    boxberry_token: "",
+    boxberry_test_mode: true,
+    russian_post_enabled: false,
+    russian_post_token: "",
+    russian_post_login: "",
+    russian_post_password: "",
+    russian_post_test_mode: true,
+  });
+
+  // Load provider settings
+  useEffect(() => {
+    if (settings?.delivery_providers) {
+      setProviderSettings(settings.delivery_providers);
+    }
+  }, [settings]);
 
   const { data: zones = [], isLoading, refetch } = useQuery({
     queryKey: ["admin-delivery-zones"],
@@ -194,13 +222,30 @@ const AdminDelivery = () => {
     return providers.find((p) => p.value === provider)?.label || provider;
   };
 
+  const handleSaveProviderSettings = () => {
+    updateSettings.mutate({ key: 'delivery_providers', value: providerSettings });
+  };
+
   return (
     <>
       <Helmet>
         <title>Доставка — BelBird Admin</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <AdminLayout title="Доставка" description="Настройки зон и способов доставки">
+      <AdminLayout title="Доставка" description="Настройки зон и служб доставки">
+        <Tabs defaultValue="zones" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="zones" className="gap-2">
+              <Package className="h-4 w-4" />
+              Зоны доставки
+            </TabsTrigger>
+            <TabsTrigger value="providers" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              Интеграции
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="zones">
         {/* Actions */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
@@ -301,6 +346,158 @@ const AdminDelivery = () => {
             </Table>
           )}
         </div>
+          </TabsContent>
+
+          {/* Providers Tab */}
+          <TabsContent value="providers">
+            <div className="space-y-6">
+              {/* CDEK */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>СДЭК</CardTitle>
+                      <CardDescription>Интеграция с API СДЭК для расчёта стоимости</CardDescription>
+                    </div>
+                    <Switch
+                      checked={providerSettings.cdek_enabled}
+                      onCheckedChange={(checked) => setProviderSettings({ ...providerSettings, cdek_enabled: checked })}
+                    />
+                  </div>
+                </CardHeader>
+                {providerSettings.cdek_enabled && (
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Switch
+                        checked={providerSettings.cdek_test_mode}
+                        onCheckedChange={(checked) => setProviderSettings({ ...providerSettings, cdek_test_mode: checked })}
+                      />
+                      <Label>Тестовый режим</Label>
+                      <Badge variant={providerSettings.cdek_test_mode ? "secondary" : "default"}>
+                        {providerSettings.cdek_test_mode ? "Тест" : "Боевой"}
+                      </Badge>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Account (Идентификатор клиента)</Label>
+                        <Input
+                          value={providerSettings.cdek_account}
+                          onChange={(e) => setProviderSettings({ ...providerSettings, cdek_account: e.target.value })}
+                          placeholder="EMscd6r9JnFiQ3bLoyjJY6eM78JrJceI"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Secure password</Label>
+                        <Input
+                          type="password"
+                          value={providerSettings.cdek_password}
+                          onChange={(e) => setProviderSettings({ ...providerSettings, cdek_password: e.target.value })}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Boxberry */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Boxberry</CardTitle>
+                      <CardDescription>Интеграция с API Boxberry</CardDescription>
+                    </div>
+                    <Switch
+                      checked={providerSettings.boxberry_enabled}
+                      onCheckedChange={(checked) => setProviderSettings({ ...providerSettings, boxberry_enabled: checked })}
+                    />
+                  </div>
+                </CardHeader>
+                {providerSettings.boxberry_enabled && (
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Switch
+                        checked={providerSettings.boxberry_test_mode}
+                        onCheckedChange={(checked) => setProviderSettings({ ...providerSettings, boxberry_test_mode: checked })}
+                      />
+                      <Label>Тестовый режим</Label>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>API Token</Label>
+                      <Input
+                        type="password"
+                        value={providerSettings.boxberry_token}
+                        onChange={(e) => setProviderSettings({ ...providerSettings, boxberry_token: e.target.value })}
+                        placeholder="Ваш API токен Boxberry"
+                      />
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Russian Post */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Почта России</CardTitle>
+                      <CardDescription>Интеграция с API Почты России</CardDescription>
+                    </div>
+                    <Switch
+                      checked={providerSettings.russian_post_enabled}
+                      onCheckedChange={(checked) => setProviderSettings({ ...providerSettings, russian_post_enabled: checked })}
+                    />
+                  </div>
+                </CardHeader>
+                {providerSettings.russian_post_enabled && (
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Switch
+                        checked={providerSettings.russian_post_test_mode}
+                        onCheckedChange={(checked) => setProviderSettings({ ...providerSettings, russian_post_test_mode: checked })}
+                      />
+                      <Label>Тестовый режим</Label>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Логин</Label>
+                        <Input
+                          value={providerSettings.russian_post_login}
+                          onChange={(e) => setProviderSettings({ ...providerSettings, russian_post_login: e.target.value })}
+                          placeholder="login@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Пароль</Label>
+                        <Input
+                          type="password"
+                          value={providerSettings.russian_post_password}
+                          onChange={(e) => setProviderSettings({ ...providerSettings, russian_post_password: e.target.value })}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Access Token</Label>
+                      <Input
+                        type="password"
+                        value={providerSettings.russian_post_token}
+                        onChange={(e) => setProviderSettings({ ...providerSettings, russian_post_token: e.target.value })}
+                        placeholder="Токен доступа"
+                      />
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              <Button onClick={handleSaveProviderSettings} disabled={updateSettings.isPending} className="gap-2">
+                {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Сохранить настройки
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
