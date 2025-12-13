@@ -1,4 +1,5 @@
 import { ArrowRight, PawPrint, Home, Flower2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import categoryPets from "@/assets/category-pets.jpg";
 import categoryHome from "@/assets/category-home.jpg";
 import categoryGarden from "@/assets/category-garden.jpg";
@@ -13,8 +14,8 @@ interface CategoryCardProps {
 }
 
 const CategoryCard = ({ title, description, image, icon, href, itemCount }: CategoryCardProps) => (
-  <a
-    href={href}
+  <Link
+    to={href}
     className="group relative overflow-hidden rounded-2xl bg-card shadow-card hover:shadow-elevated transition-all duration-300"
   >
     {/* Image */}
@@ -50,7 +51,7 @@ const CategoryCard = ({ title, description, image, icon, href, itemCount }: Cate
         <ArrowRight className="h-4 w-4" />
       </div>
     </div>
-  </a>
+  </Link>
 );
 
 const CategorySection = () => {
@@ -60,7 +61,7 @@ const CategorySection = () => {
       description: "Корма, аксессуары и товары для здоровья ваших питомцев",
       image: categoryPets,
       icon: <PawPrint className="h-4 w-4" />,
-      href: "/pets",
+      href: "/catalog/pets",
       itemCount: 15420,
     },
     {
@@ -68,7 +69,7 @@ const CategorySection = () => {
       description: "Декор, текстиль и эко-товары для комфортного пространства",
       image: categoryHome,
       icon: <Home className="h-4 w-4" />,
-      href: "/home",
+      href: "/catalog/home",
       itemCount: 23150,
     },
     {
@@ -76,7 +77,7 @@ const CategorySection = () => {
       description: "Семена, инструменты и всё для цветущего сада",
       image: categoryGarden,
       icon: <Flower2 className="h-4 w-4" />,
-      href: "/garden",
+      href: "/catalog/garden",
       itemCount: 12890,
     },
   ];
@@ -94,13 +95,13 @@ const CategorySection = () => {
               Выберите направление для покупок
             </p>
           </div>
-          <a
-            href="/catalog"
+          <Link
+            to="/catalog"
             className="hidden md:flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
           >
             Весь каталог
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
 
         {/* Grid */}
@@ -111,13 +112,13 @@ const CategorySection = () => {
         </div>
 
         {/* Mobile link */}
-        <a
-          href="/catalog"
+        <Link
+          to="/catalog"
           className="flex md:hidden items-center justify-center gap-2 text-sm font-medium text-primary mt-6 py-3"
         >
           Весь каталог
           <ArrowRight className="h-4 w-4" />
-        </a>
+        </Link>
       </div>
     </section>
   );

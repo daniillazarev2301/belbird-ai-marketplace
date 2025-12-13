@@ -1,4 +1,5 @@
 import { ArrowRight, Clock, Percent } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const PromoSection = () => {
@@ -25,9 +26,12 @@ const PromoSection = () => {
                 variant="secondary"
                 size="lg"
                 className="gap-2"
+                asChild
               >
-                Использовать
-                <ArrowRight className="h-4 w-4" />
+                <Link to="/catalog">
+                  Использовать
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </Button>
             </div>
             {/* Decorative circles */}
@@ -53,13 +57,13 @@ const PromoSection = () => {
                   <p className="text-sm text-muted-foreground mb-3">
                     Осталось 2 часа 15 минут
                   </p>
-                  <a
-                    href="/flash-sale"
+                  <Link
+                    to="/catalog"
                     className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
                   >
                     Смотреть
                     <ArrowRight className="h-4 w-4" />
-                  </a>
+                  </Link>
                 </div>
                 <div className="flex gap-2 text-center">
                   <div className="px-3 py-2 rounded-lg bg-secondary/20">
@@ -86,13 +90,13 @@ const PromoSection = () => {
                 <p className="text-sm text-muted-foreground mb-3">
                   Экономьте до 15% с регулярной доставкой
                 </p>
-                <a
-                  href="/subscriptions"
+                <Link
+                  to="/account/subscriptions"
                   className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
                 >
                   Узнать больше
                   <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </div>
             </div>
           </div>

@@ -145,7 +145,10 @@ const StoriesSection = () => {
 
               {/* CTA */}
               <div className="absolute bottom-4 left-4 right-4">
-                <button className="w-full py-3 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
+                <button 
+                  onClick={() => setSelectedStory(null)}
+                  className="w-full py-3 px-4 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                >
                   Смотреть товары
                 </button>
               </div>

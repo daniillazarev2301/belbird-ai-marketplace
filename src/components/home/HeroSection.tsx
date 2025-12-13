@@ -1,8 +1,15 @@
 import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-main.jpg";
 
 const HeroSection = () => {
+  const scrollToChat = () => {
+    // Trigger AI chat widget open
+    const chatButton = document.querySelector('[data-chat-trigger]') as HTMLButtonElement;
+    if (chatButton) chatButton.click();
+  };
+
   return (
     <section className="relative overflow-hidden">
       {/* Background Image */}
@@ -38,11 +45,13 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button size="lg" className="gap-2 text-base">
-              Начать покупки
-              <ArrowRight className="h-4 w-4" />
+            <Button size="lg" className="gap-2 text-base" asChild>
+              <Link to="/catalog">
+                Начать покупки
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
-            <Button size="lg" variant="outline" className="gap-2 text-base">
+            <Button size="lg" variant="outline" className="gap-2 text-base" onClick={scrollToChat}>
               <Sparkles className="h-4 w-4" />
               AI-консультант
             </Button>

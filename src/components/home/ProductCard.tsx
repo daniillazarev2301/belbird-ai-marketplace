@@ -1,8 +1,10 @@
 import { Heart, Star, ShoppingCart, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export interface Product {
   id: string;
@@ -29,10 +31,27 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toast({
+      title: "Добавлено в корзину",
+      description: product.name,
+    });
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsFavorite(!isFavorite);
+    toast({
+      title: isFavorite ? "Удалено из избранного" : "Добавлено в избранное",
+      description: product.name,
+    });
+  };
+
   return (
     <article className="group relative bg-card rounded-xl overflow-hidden shadow-card hover:shadow-elevated transition-all duration-300">
       {/* Image Container */}
-      <a href={`/product/${product.id}`} className="block relative aspect-square overflow-hidden">
+      <Link to={`/product/${product.id}`} className="block relative aspect-square overflow-hidden">
         <img
           src={product.image}
           alt={product.name}
@@ -66,10 +85,7 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
 
         {/* Favorite Button */}
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            setIsFavorite(!isFavorite);
-          }}
+          onClick={handleToggleFavorite}
           className={cn(
             "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all",
             isFavorite
@@ -79,7 +95,7 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
         >
           <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
         </button>
-      </a>
+      </Link>
 
       {/* Content */}
       <div className="p-3 md:p-4">
@@ -87,11 +103,11 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
         <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
 
         {/* Name */}
-        <a href={`/product/${product.id}`}>
+        <Link to={`/product/${product.id}`}>
           <h3 className="font-medium text-sm md:text-base line-clamp-2 mb-2 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
-        </a>
+        </Link>
 
         {/* Rating */}
         <div className="flex items-center gap-1 mb-3">
@@ -114,7 +130,7 @@ const ProductCard = ({ product, variant = "default" }: ProductCardProps) => {
               </p>
             )}
           </div>
-          <Button size="icon" className="h-9 w-9 shrink-0">
+          <Button size="icon" className="h-9 w-9 shrink-0" onClick={handleAddToCart}>
             <ShoppingCart className="h-4 w-4" />
           </Button>
         </div>
