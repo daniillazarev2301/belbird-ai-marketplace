@@ -182,25 +182,9 @@ const Checkout = () => {
         setIsProcessingPayment(true);
         
         try {
-          const returnUrl = `${window.location.origin}/account/orders?payment=success&order=${order.id}`;
-          const failUrl = `${window.location.origin}/account/orders?payment=failed&order=${order.id}`;
+          const returnUrl = `${window.location.origin}/payment-result?payment=success&order=${order.id}`;
+          const failUrl = `${window.location.origin}/payment-result?payment=failed&order=${order.id}`;
           
-          const { data: paymentData, error: paymentError } = await supabase.functions.invoke(
-            "alfa-bank-payment",
-            {
-              body: {
-                orderId: order.id,
-                amount: total,
-                returnUrl,
-                failUrl,
-                description: `Заказ #${order.id.slice(0, 8).toUpperCase()}`
-              },
-              headers: {
-                "Content-Type": "application/json"
-              }
-            }
-          );
-
           // Add action query parameter
           const functionUrl = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/alfa-bank-payment`);
           functionUrl.searchParams.set("action", "create");

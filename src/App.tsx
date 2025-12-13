@@ -31,6 +31,7 @@ import AdminReviews from "./pages/admin/AdminReviews";
 import AdminBlog from "./pages/admin/AdminBlog";
 import AdminDelivery from "./pages/admin/AdminDelivery";
 import Compare from "./pages/Compare";
+import PaymentResult from "./pages/PaymentResult";
 import AccountProfile from "./pages/account/AccountProfile";
 import AccountOrders from "./pages/account/AccountOrders";
 import AccountPets from "./pages/account/AccountPets";
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/product/:id" element={<Product />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/payment-result" element={<PaymentResult />} />
               <Route path="/compare" element={<Compare />} />
               
               {/* Static Pages */}

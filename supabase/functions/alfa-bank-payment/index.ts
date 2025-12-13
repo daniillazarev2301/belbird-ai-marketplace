@@ -208,6 +208,20 @@ serve(async (req) => {
         
         const result = await createPayment(settings, body);
         
+        // Store Alfa-Bank order ID in order notes for later reference
+        if (result.orderId) {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          
+          await supabase
+            .from("orders")
+            .update({ 
+              notes: `alfa_order_id:${result.orderId}`
+            })
+            .eq("id", body.orderId);
+        }
+        
         return new Response(
           JSON.stringify(result),
           { 
@@ -233,7 +247,7 @@ serve(async (req) => {
       }
 
       case "callback": {
-        // This is called by Alfa-Bank after payment
+        // This is called by Alfa-Bank after payment (webhook)
         const body: CallbackRequest = await req.json();
         console.log("Payment callback received:", body);
         
@@ -243,6 +257,8 @@ serve(async (req) => {
           
           // Update order in database
           await updateOrderStatus(body.orderNumber, status.status, body.orderId);
+          
+          console.log(`Callback processed: order ${body.orderNumber} -> ${status.status}`);
         }
         
         return new Response(
@@ -254,9 +270,61 @@ serve(async (req) => {
         );
       }
 
+      case "verify": {
+        // Verify payment by our order ID (for frontend use after redirect)
+        const body: { orderId: string } = await req.json();
+        console.log("Verifying payment for our order:", body.orderId);
+        
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        // Get the order to find Alfa-Bank order ID from notes
+        const { data: orderData } = await supabase
+          .from("orders")
+          .select("notes, payment_status")
+          .eq("id", body.orderId)
+          .maybeSingle();
+        
+        if (!orderData) {
+          return new Response(
+            JSON.stringify({ error: "Order not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Extract Alfa-Bank order ID from notes
+        const alfaOrderId = orderData.notes?.match(/alfa_order_id:([a-f0-9-]+)/)?.[1];
+        
+        if (!alfaOrderId) {
+          return new Response(
+            JSON.stringify({ status: orderData.payment_status, message: "No Alfa-Bank order ID found" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Check status with Alfa-Bank
+        const result = await checkPaymentStatus(settings, alfaOrderId);
+        
+        // Update order if payment is complete
+        if (result.status === "paid" && orderData.payment_status !== "paid") {
+          await updateOrderStatus(body.orderId, "paid", alfaOrderId);
+        } else if ((result.status === "rejected" || result.status === "canceled") && orderData.payment_status === "pending") {
+          await updateOrderStatus(body.orderId, "failed", alfaOrderId);
+        }
+        
+        return new Response(
+          JSON.stringify(result),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+
       default:
         return new Response(
-          JSON.stringify({ error: "Invalid action. Use: create, status, or callback" }),
+          JSON.stringify({ error: "Invalid action. Use: create, status, callback, or verify" }),
           { 
             status: 400, 
             headers: { ...corsHeaders, "Content-Type": "application/json" } 
