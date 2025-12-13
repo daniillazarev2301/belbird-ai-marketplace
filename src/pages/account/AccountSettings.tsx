@@ -24,7 +24,7 @@ import {
   Shield,
   Download,
 } from "lucide-react";
-
+import { PushNotificationToggle } from "@/components/notifications/PushNotificationToggle";
 const AccountSettings = () => {
   return (
     <>
@@ -96,6 +96,13 @@ const AccountSettings = () => {
                   Push-уведомления
                 </h4>
                 <div className="space-y-4">
+                  {/* Main push toggle */}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <PushNotificationToggle />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Получайте уведомления о статусе заказов и акциях прямо на устройство
+                    </p>
+                  </div>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">Статус доставки</p>
