@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/contexts/CartContext";
 
 interface ProductData {
   id: string;
@@ -36,6 +37,7 @@ interface ProductData {
 const Product = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { addItem } = useCart();
   const [product, setProduct] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImage, setCurrentImage] = useState(0);
@@ -101,9 +103,19 @@ const Product = () => {
   };
 
   const addToCart = () => {
+    if (!product) return;
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      oldPrice: product.old_price,
+      quantity: quantity,
+      image: product.images?.[0] || "/placeholder.svg",
+      slug: product.slug,
+    });
     toast({
       title: "Добавлено в корзину",
-      description: `${product?.name} (${quantity} шт.)`,
+      description: `${product.name} (${quantity} шт.)`,
     });
   };
 

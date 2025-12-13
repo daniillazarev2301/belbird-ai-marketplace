@@ -8,73 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-
-interface CartItem {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  oldPrice?: number;
-  quantity: number;
-  image: string;
-  inStock: boolean;
-  weight: string;
-}
-
-const mockCartItems: CartItem[] = [
-  {
-    id: "1",
-    name: "Корм для собак премиум класса с ягненком",
-    brand: "Royal Canin",
-    price: 4590,
-    oldPrice: 5200,
-    quantity: 2,
-    image: "/placeholder.svg",
-    inStock: true,
-    weight: "12 кг"
-  },
-  {
-    id: "2",
-    name: "Лежанка ортопедическая для средних пород",
-    brand: "Trixie",
-    price: 3200,
-    quantity: 1,
-    image: "/placeholder.svg",
-    inStock: true,
-    weight: "60x45 см"
-  },
-  {
-    id: "3",
-    name: "Витамины для суставов и связок",
-    brand: "8in1",
-    price: 890,
-    quantity: 3,
-    image: "/placeholder.svg",
-    inStock: false,
-    weight: "60 таблеток"
-  }
-];
+import { useCart } from "@/contexts/CartContext";
 
 const Cart = () => {
-  const [items, setItems] = useState<CartItem[]>(mockCartItems);
-  const [selectedItems, setSelectedItems] = useState<string[]>(items.filter(i => i.inStock).map(i => i.id));
+  const { items, removeItem, updateQuantity, getTotal } = useCart();
+  const [selectedItems, setSelectedItems] = useState<string[]>(items.map(i => i.id));
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
-
-  const updateQuantity = (id: string, delta: number) => {
-    setItems(items.map(item => 
-      item.id === id 
-        ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-        : item
-    ));
-  };
-
-  const removeItem = (id: string) => {
-    setItems(items.filter(item => item.id !== id));
-    setSelectedItems(selectedItems.filter(itemId => itemId !== id));
-  };
 
   const toggleSelect = (id: string) => {
     setSelectedItems(prev => 
@@ -85,8 +26,7 @@ const Cart = () => {
   };
 
   const selectAll = () => {
-    const availableIds = items.filter(i => i.inStock).map(i => i.id);
-    setSelectedItems(selectedItems.length === availableIds.length ? [] : availableIds);
+    setSelectedItems(selectedItems.length === items.length ? [] : items.map(i => i.id));
   };
 
   const applyPromo = () => {
@@ -112,7 +52,7 @@ const Cart = () => {
               Добавьте товары, чтобы оформить заказ
             </p>
             <Button asChild>
-              <Link to="/">Перейти к покупкам</Link>
+              <Link to="/catalog">Перейти к покупкам</Link>
             </Button>
           </div>
         </main>
@@ -135,11 +75,11 @@ const Cart = () => {
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-3">
                 <Checkbox 
-                  checked={selectedItems.length === items.filter(i => i.inStock).length}
+                  checked={selectedItems.length === items.length && items.length > 0}
                   onCheckedChange={selectAll}
                 />
                 <span className="text-sm font-medium">
-                  Выбрано: {selectedItems.length} из {items.filter(i => i.inStock).length}
+                  Выбрано: {selectedItems.length} из {items.length}
                 </span>
               </div>
               <Button 
@@ -147,7 +87,7 @@ const Cart = () => {
                 size="sm"
                 className="text-destructive hover:text-destructive"
                 onClick={() => {
-                  setItems(items.filter(item => !selectedItems.includes(item.id)));
+                  selectedItems.forEach(id => removeItem(id));
                   setSelectedItems([]);
                 }}
               >
@@ -158,33 +98,29 @@ const Cart = () => {
 
             {/* Items */}
             {items.map((item) => (
-              <Card key={item.id} className={!item.inStock ? "opacity-60" : ""}>
+              <Card key={item.id}>
                 <CardContent className="p-4">
                   <div className="flex gap-4">
                     <div className="flex items-start gap-3">
                       <Checkbox 
                         checked={selectedItems.includes(item.id)}
                         onCheckedChange={() => toggleSelect(item.id)}
-                        disabled={!item.inStock}
                       />
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="w-20 h-20 object-cover rounded-lg bg-muted"
-                      />
+                      <Link to={`/product/${item.slug}`}>
+                        <img 
+                          src={item.image || "/placeholder.svg"} 
+                          alt={item.name}
+                          className="w-20 h-20 object-cover rounded-lg bg-muted"
+                        />
+                      </Link>
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between gap-4">
                         <div>
-                          <p className="text-xs text-muted-foreground">{item.brand}</p>
-                          <h3 className="font-medium line-clamp-2">{item.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">{item.weight}</p>
-                          {!item.inStock && (
-                            <Badge variant="outline" className="mt-2 text-destructive border-destructive">
-                              Нет в наличии
-                            </Badge>
-                          )}
+                          <Link to={`/product/${item.slug}`} className="hover:text-primary">
+                            <h3 className="font-medium line-clamp-2">{item.name}</h3>
+                          </Link>
                         </div>
                         <div className="text-right">
                           <p className="font-bold">{(item.price * item.quantity).toLocaleString()} ₽</p>
@@ -202,8 +138,7 @@ const Cart = () => {
                             variant="outline"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => updateQuantity(item.id, -1)}
-                            disabled={!item.inStock}
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -212,8 +147,7 @@ const Cart = () => {
                             variant="outline"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => updateQuantity(item.id, 1)}
-                            disabled={!item.inStock}
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -227,7 +161,10 @@ const Cart = () => {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => {
+                              removeItem(item.id);
+                              setSelectedItems(prev => prev.filter(id => id !== item.id));
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
