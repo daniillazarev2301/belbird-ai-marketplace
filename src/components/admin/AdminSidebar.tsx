@@ -9,9 +9,9 @@ import {
   FileText,
   Image,
   Tags,
-  Bell,
   ChevronDown,
-  LogOut
+  LogOut,
+  Globe
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -58,7 +58,8 @@ const salesItems = [
 ];
 
 const settingsItems = [
-  { title: "Настройки", url: "/admin/settings", icon: Settings },
+  { title: "Настройки сайта", url: "/admin/site-settings", icon: Globe },
+  { title: "Роли и доступы", url: "/admin/settings", icon: Settings },
 ];
 
 export function AdminSidebar() {
