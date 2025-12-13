@@ -59,6 +59,7 @@ import {
 import { SortableMediaItem } from "@/components/admin/SortableMediaItem";
 import { CreateBrandDialog } from "@/components/admin/CreateBrandDialog";
 import { SpecificationsEditor } from "@/components/admin/SpecificationsEditor";
+import { RichContentEditor, RichContentBlock } from "@/components/admin/RichContentEditor";
 import { compressMultipleImages, formatFileSize, MEDIA_REQUIREMENTS, validateMediaFile, validateImageDimensions, isVideoFile, countMediaTypes } from "@/utils/imageCompression";
 
 interface ProductFormData {
@@ -80,6 +81,7 @@ interface ProductFormData {
   meta_title: string;
   meta_description: string;
   specifications: Record<string, string>;
+  rich_content: RichContentBlock[];
 }
 
 const AdminProductEdit = () => {
@@ -130,6 +132,7 @@ const AdminProductEdit = () => {
     meta_title: "",
     meta_description: "",
     specifications: {},
+    rich_content: [],
   });
 
   const [featuresText, setFeaturesText] = useState("");
@@ -181,6 +184,7 @@ const AdminProductEdit = () => {
           meta_title: "",
           meta_description: "",
           specifications: (data.specifications as Record<string, string>) || {},
+          rich_content: Array.isArray(data.rich_content) ? (data.rich_content as unknown as RichContentBlock[]) : [],
         });
         setFeaturesText(data.features?.join("\n") || "");
       }
@@ -457,6 +461,7 @@ const AdminProductEdit = () => {
         features: featuresText ? featuresText.split('\n').filter(Boolean) : [],
         images: formData.images,
         specifications: formData.specifications,
+        rich_content: JSON.parse(JSON.stringify(formData.rich_content)),
       };
 
       if (isNew) {
@@ -780,6 +785,13 @@ const AdminProductEdit = () => {
                 <SpecificationsEditor
                   specifications={formData.specifications}
                   onChange={(specs) => setFormData(prev => ({ ...prev, specifications: specs }))}
+                />
+
+                {/* Rich Content Editor */}
+                <RichContentEditor
+                  blocks={formData.rich_content}
+                  onChange={(blocks) => setFormData(prev => ({ ...prev, rich_content: blocks }))}
+                  productName={formData.name}
                 />
 
                 <Card>
