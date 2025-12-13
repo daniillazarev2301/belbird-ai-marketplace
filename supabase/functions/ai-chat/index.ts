@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, petProfiles } = await req.json();
+    const { messages, petProfiles, imageData } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -43,6 +43,7 @@ serve(async (req) => {
 - Объясняй, почему конкретный товар подходит именно этому питомцу
 - Отвечай кратко и по существу, но информативно
 - Используй эмодзи умеренно для дружелюбности
+- Если пользователь отправил изображение, проанализируй его и дай рекомендации на основе того, что видишь
 ${petContext}
 
 Категории товаров BelBird:
@@ -50,9 +51,39 @@ ${petContext}
 2. Дом - декор, текстиль, эко-уборка, кухонные принадлежности
 3. Сад - семена, рассада, инструменты, удобрения
 
-Бренды: Royal Canin, Purina, Trixie, FURminator, Bio-Groom и другие премиальные бренды.`;
+Бренды: Royal Canin, Purina, Trixie, FURminator, Bio-Groom и другие премиальные бренды.
+
+При анализе изображений:
+- Определи, что изображено (питомец, товар, проблема)
+- Если это питомец - определи вид, возможную породу, примерный возраст
+- Дай конкретные рекомендации по товарам из каталога
+- Если видишь проблему (например, с шерстью или кожей) - порекомендуй подходящие средства`;
 
     console.log("Calling Lovable AI with pet context:", petContext);
+    console.log("Has image data:", !!imageData);
+
+    // Build messages array with potential image content
+    const formattedMessages = messages.map((msg: any) => {
+      // If this is the last user message and we have image data, include it
+      if (msg.role === "user" && imageData && msg === messages[messages.length - 1]) {
+        return {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: imageData
+              }
+            },
+            {
+              type: "text",
+              text: msg.content || "Проанализируй это изображение и дай рекомендации по товарам"
+            }
+          ]
+        };
+      }
+      return msg;
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -64,7 +95,7 @@ ${petContext}
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages,
+          ...formattedMessages,
         ],
         stream: true,
       }),
