@@ -26,6 +26,7 @@ import AdminMedia from "./pages/admin/AdminMedia";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminPages from "./pages/admin/AdminPages";
 import AdminPromoCodes from "./pages/admin/AdminPromoCodes";
+import AdminSiteSettings from "./pages/admin/AdminSiteSettings";
 import AccountProfile from "./pages/account/AccountProfile";
 import AccountOrders from "./pages/account/AccountOrders";
 import AccountPets from "./pages/account/AccountPets";
@@ -88,6 +89,7 @@ const App = () => (
               <Route path="/admin/promo-codes" element={<AdminPromoCodes />} />
               <Route path="/admin/customers" element={<AdminCustomers />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/site-settings" element={<AdminSiteSettings />} />
               
               <Route path="*" element={<NotFound />} />
             </Routes>
