@@ -1,9 +1,17 @@
-import { Instagram, Send } from "lucide-react";
+import { Instagram, Send, Phone, Mail, MapPin, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const Footer = () => {
+  const { settings } = useSiteSettings();
+  
+  const siteName = settings?.general?.site_name || "BelBird";
+  const logoUrl = settings?.general?.logo_url;
+  const contacts = settings?.contacts;
+  const social = settings?.social;
+
   const categories = [
     { label: "Собаки", href: "/catalog/dogs" },
     { label: "Кошки", href: "/catalog/cats" },
@@ -34,31 +42,98 @@ const Footer = () => {
           {/* Brand */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <span className="text-lg font-bold text-primary-foreground">B</span>
-              </div>
-              <span className="font-serif text-xl font-semibold">BelBird</span>
+              {logoUrl ? (
+                <img src={logoUrl} alt={siteName} className="h-9 w-auto max-w-[120px] object-contain" />
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                  <span className="text-lg font-bold text-primary-foreground">{siteName.charAt(0)}</span>
+                </div>
+              )}
+              <span className="font-serif text-xl font-semibold">{siteName}</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
               Зоотовары для домашних и сельскохозяйственных животных
             </p>
+            
+            {/* Contacts */}
+            {contacts && (
+              <div className="space-y-2 mb-4 text-sm">
+                {contacts.phone && (
+                  <a href={`tel:${contacts.phone}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                    <Phone className="h-4 w-4" />
+                    {contacts.phone}
+                  </a>
+                )}
+                {contacts.email && (
+                  <a href={`mailto:${contacts.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                    <Mail className="h-4 w-4" />
+                    {contacts.email}
+                  </a>
+                )}
+                {contacts.work_hours && (
+                  <p className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    {contacts.work_hours}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Social */}
             <div className="flex gap-3">
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a
-                href="https://t.me/belbird"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Send className="h-4 w-4" />
-              </a>
+              {social?.vk && (
+                <a
+                  href={social.vk}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                  title="ВКонтакте"
+                >
+                  <span className="text-sm font-bold">VK</span>
+                </a>
+              )}
+              {social?.telegram && (
+                <a
+                  href={social.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                  title="Telegram"
+                >
+                  <Send className="h-4 w-4" />
+                </a>
+              )}
+              {social?.whatsapp && (
+                <a
+                  href={social.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                  title="WhatsApp"
+                >
+                  <Phone className="h-4 w-4" />
+                </a>
+              )}
+              {!social?.vk && !social?.telegram && !social?.whatsapp && (
+                <>
+                  <a
+                    href="https://instagram.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <Instagram className="h-4 w-4" />
+                  </a>
+                  <a
+                    href="https://t.me/belbird"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                  </a>
+                </>
+              )}
             </div>
           </div>
 
@@ -143,7 +218,7 @@ const Footer = () => {
             </Link>
           </div>
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} BelBird. Все права защищены.
+            © {new Date().getFullYear()} {siteName}. Все права защищены.
           </p>
         </div>
       </div>

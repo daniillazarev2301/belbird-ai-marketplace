@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { CategoryMenu } from "./CategoryMenu";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface SearchResult {
   id: string;
@@ -19,6 +20,7 @@ interface SearchResult {
 }
 
 const Header = () => {
+  const { settings } = useSiteSettings();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -28,6 +30,9 @@ const Header = () => {
   const { getItemCount } = useCart();
   const cartCount = getItemCount();
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const siteName = settings?.general?.site_name || "BelBird";
+  const logoUrl = settings?.general?.logo_url;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -97,11 +102,15 @@ const Header = () => {
       <div className="container flex h-16 items-center justify-between gap-4 px-4 md:px-6">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <span className="text-lg font-bold text-primary-foreground">B</span>
-          </div>
+          {logoUrl ? (
+            <img src={logoUrl} alt={siteName} className="h-9 w-auto max-w-[120px] object-contain" />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+              <span className="text-lg font-bold text-primary-foreground">{siteName.charAt(0)}</span>
+            </div>
+          )}
           <span className="hidden font-serif text-xl font-semibold text-foreground sm:inline-block">
-            BelBird
+            {siteName}
           </span>
         </Link>
 
@@ -221,10 +230,14 @@ const Header = () => {
             <SheetContent side="right" className="w-80">
               <div className="flex flex-col gap-6 mt-8">
                 <Link to="/" className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                    <span className="text-lg font-bold text-primary-foreground">B</span>
-                  </div>
-                  <span className="font-serif text-xl font-semibold">BelBird</span>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt={siteName} className="h-9 w-auto max-w-[120px] object-contain" />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                      <span className="text-lg font-bold text-primary-foreground">{siteName.charAt(0)}</span>
+                    </div>
+                  )}
+                  <span className="font-serif text-xl font-semibold">{siteName}</span>
                 </Link>
                 <nav className="flex flex-col gap-4">
                   {navLinks.map((link) => (

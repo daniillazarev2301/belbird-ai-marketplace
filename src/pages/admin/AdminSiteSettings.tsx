@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSiteSettings, SettingsKey } from "@/hooks/useSiteSettings";
 import { Loader2, Save, Globe, Phone, Share2, Search, Truck, CreditCard, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 const AdminSiteSettings = () => {
   const { settings, isLoading, updateSettings } = useSiteSettings();
@@ -152,24 +153,19 @@ const AdminSiteSettings = () => {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="logo_url">URL логотипа</Label>
-                  <Input
-                    id="logo_url"
-                    value={general.logo_url}
-                    onChange={(e) => setGeneral({ ...general, logo_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="favicon_url">URL favicon</Label>
-                  <Input
-                    id="favicon_url"
-                    value={general.favicon_url}
-                    onChange={(e) => setGeneral({ ...general, favicon_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </div>
+                <ImageUpload
+                  label="Логотип"
+                  value={general.logo_url}
+                  onChange={(url) => setGeneral({ ...general, logo_url: url })}
+                  folder="branding"
+                />
+                <ImageUpload
+                  label="Favicon"
+                  value={general.favicon_url}
+                  onChange={(url) => setGeneral({ ...general, favicon_url: url })}
+                  folder="branding"
+                  accept="image/x-icon,image/png,image/svg+xml"
+                />
               </div>
               <Button onClick={() => handleSave('general', general)} disabled={updateSettings.isPending}>
                 {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
