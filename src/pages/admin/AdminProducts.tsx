@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -33,8 +33,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Plus,
   Search,
@@ -47,75 +49,34 @@ import {
   Sparkles,
   Download,
   Upload,
-  Image,
   Loader2,
-  X,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-const products = [
-  {
-    id: "1",
-    sku: "RC-001",
-    name: "Royal Canin Indoor для кошек",
-    category: "Корма для кошек",
-    price: 3290,
-    stock: 45,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=80&h=80&fit=crop",
-  },
-  {
-    id: "2",
-    sku: "PB-102",
-    name: "Лежанка Premium для собак XL",
-    category: "Аксессуары для собак",
-    price: 4990,
-    stock: 12,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=80&h=80&fit=crop",
-  },
-  {
-    id: "3",
-    sku: "SD-203",
-    name: "Семена томатов Черри органические",
-    category: "Семена",
-    price: 590,
-    stock: 230,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1592921870789-04563d55041c?w=80&h=80&fit=crop",
-  },
-  {
-    id: "4",
-    sku: "HD-304",
-    name: "Свеча ароматическая с эфирными маслами",
-    category: "Декор для дома",
-    price: 1490,
-    stock: 0,
-    status: "out_of_stock",
-    image: "https://images.unsplash.com/photo-1602607550528-80baf3b9c38a?w=80&h=80&fit=crop",
-  },
-  {
-    id: "5",
-    sku: "GD-405",
-    name: "Секатор садовый профессиональный",
-    category: "Инструменты",
-    price: 1290,
-    stock: 67,
-    status: "active",
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=80&h=80&fit=crop",
-  },
-  {
-    id: "6",
-    sku: "PL-506",
-    name: "Монстера в декоративном кашпо",
-    category: "Комнатные растения",
-    price: 2890,
-    stock: 8,
-    status: "low_stock",
-    image: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=80&h=80&fit=crop",
-  },
-];
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: number;
+  old_price: number | null;
+  images: string[] | null;
+  stock_count: number | null;
+  rating: number | null;
+  is_active: boolean | null;
+  sku: string | null;
+  category_id: string | null;
+  categories?: { name: string } | null;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   active: { label: "Активен", variant: "default" },
@@ -124,15 +85,191 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   draft: { label: "Черновик", variant: "outline" },
 };
 
+const getProductStatus = (product: Product) => {
+  if (!product.is_active) return "draft";
+  if ((product.stock_count ?? 0) === 0) return "out_of_stock";
+  if ((product.stock_count ?? 0) < 10) return "low_stock";
+  return "active";
+};
+
 const AdminProducts = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [selectedProductForUpload, setSelectedProductForUpload] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    price: "",
+    old_price: "",
+    stock_count: "",
+    sku: "",
+    category_id: "",
+    is_active: true,
+  });
+
+  // Fetch products
+  const { data: products = [], isLoading: productsLoading, refetch } = useQuery({
+    queryKey: ["admin-products", searchQuery, categoryFilter, statusFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from("products")
+        .select("*, categories(name)")
+        .order("created_at", { ascending: false });
+
+      if (searchQuery) {
+        query = query.or(`name.ilike.%${searchQuery}%,sku.ilike.%${searchQuery}%`);
+      }
+
+      if (categoryFilter !== "all") {
+        query = query.eq("category_id", categoryFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let filtered = data || [];
+      if (statusFilter !== "all") {
+        filtered = filtered.filter((p) => getProductStatus(p) === statusFilter);
+      }
+
+      return filtered as Product[];
+    },
+  });
+
+  // Fetch categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ["admin-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, slug")
+        .order("name");
+      if (error) throw error;
+      return data as Category[];
+    },
+  });
+
+  // Create product mutation
+  const createProduct = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const { error } = await supabase.from("products").insert({
+        name: data.name,
+        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, "-"),
+        description: data.description || null,
+        price: parseFloat(data.price) || 0,
+        old_price: data.old_price ? parseFloat(data.old_price) : null,
+        stock_count: data.stock_count ? parseInt(data.stock_count) : 0,
+        sku: data.sku || null,
+        category_id: data.category_id || null,
+        is_active: data.is_active,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Товар успешно добавлен");
+      setAddDialogOpen(false);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error("Ошибка при добавлении товара: " + error.message);
+    },
+  });
+
+  // Update product mutation
+  const updateProduct = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      const { error } = await supabase
+        .from("products")
+        .update({
+          name: data.name,
+          slug: data.slug,
+          description: data.description || null,
+          price: parseFloat(data.price) || 0,
+          old_price: data.old_price ? parseFloat(data.old_price) : null,
+          stock_count: data.stock_count ? parseInt(data.stock_count) : 0,
+          sku: data.sku || null,
+          category_id: data.category_id || null,
+          is_active: data.is_active,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Товар успешно обновлён");
+      setEditProduct(null);
+      resetForm();
+    },
+    onError: (error) => {
+      toast.error("Ошибка при обновлении товара: " + error.message);
+    },
+  });
+
+  // Delete product mutation
+  const deleteProduct = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Товар удалён");
+    },
+    onError: (error) => {
+      toast.error("Ошибка при удалении: " + error.message);
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      slug: "",
+      description: "",
+      price: "",
+      old_price: "",
+      stock_count: "",
+      sku: "",
+      category_id: "",
+      is_active: true,
+    });
+  };
+
+  const openEditDialog = (product: Product) => {
+    setEditProduct(product);
+    setFormData({
+      name: product.name,
+      slug: product.slug,
+      description: product.description || "",
+      price: product.price.toString(),
+      old_price: product.old_price?.toString() || "",
+      stock_count: product.stock_count?.toString() || "",
+      sku: product.sku || "",
+      category_id: product.category_id || "",
+      is_active: product.is_active ?? true,
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.price) {
+      toast.error("Заполните название и цену");
+      return;
+    }
+
+    if (editProduct) {
+      updateProduct.mutate({ id: editProduct.id, data: formData });
+    } else {
+      createProduct.mutate(formData);
+    }
+  };
 
   const toggleAll = () => {
     if (selectedProducts.length === products.length) {
@@ -148,59 +285,17 @@ const AdminProducts = () => {
     );
   };
 
-  const handleImageUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    
-    setUploadingImages(true);
-    const newUrls: string[] = [];
-
-    try {
-      for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `product-images/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('products')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          toast.error(`Ошибка загрузки ${file.name}`);
-          continue;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('products')
-          .getPublicUrl(filePath);
-
-        newUrls.push(publicUrl);
-      }
-
-      setUploadedImages(prev => [...prev, ...newUrls]);
-      toast.success(`Загружено ${newUrls.length} изображений`);
-    } catch (error) {
-      console.error('Error uploading images:', error);
-      toast.error("Ошибка при загрузке изображений");
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-
-  const removeUploadedImage = (url: string) => {
-    setUploadedImages(prev => prev.filter(u => u !== url));
-  };
-
-  const openUploadDialog = (productId: string) => {
-    setSelectedProductForUpload(productId);
-    setUploadedImages([]);
-    setUploadDialogOpen(true);
+  const handleDeleteSelected = () => {
+    if (selectedProducts.length === 0) return;
+    selectedProducts.forEach((id) => deleteProduct.mutate(id));
+    setSelectedProducts([]);
   };
 
   return (
     <>
       <Helmet>
         <title>Товары — BelBird Admin</title>
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <AdminLayout title="Товары" description="Управление каталогом товаров">
         {/* Actions Bar */}
@@ -215,18 +310,20 @@ const AdminProducts = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Select defaultValue="all">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Категория" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все категории</SelectItem>
-                <SelectItem value="pets">Любимцы</SelectItem>
-                <SelectItem value="home">Дом</SelectItem>
-                <SelectItem value="garden">Сад</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <Select defaultValue="all">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Статус" />
               </SelectTrigger>
@@ -235,10 +332,11 @@ const AdminProducts = () => {
                 <SelectItem value="active">Активные</SelectItem>
                 <SelectItem value="low_stock">Мало</SelectItem>
                 <SelectItem value="out_of_stock">Нет в наличии</SelectItem>
+                <SelectItem value="draft">Черновик</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -251,11 +349,12 @@ const AdminProducts = () => {
                 <span className="text-sm text-muted-foreground">
                   Выбрано: {selectedProducts.length}
                 </span>
-                <Button variant="outline" size="sm" className="gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  AI-описания
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1 text-destructive">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-destructive"
+                  onClick={handleDeleteSelected}
+                >
                   <Trash2 className="h-3 w-3" />
                   Удалить
                 </Button>
@@ -267,11 +366,7 @@ const AdminProducts = () => {
               <Download className="h-4 w-4" />
               Экспорт
             </Button>
-            <Button variant="outline" size="sm" className="gap-1">
-              <Upload className="h-4 w-4" />
-              Импорт
-            </Button>
-            <Button size="sm" className="gap-1" onClick={() => navigate('/admin/products/new')}>
+            <Button size="sm" className="gap-1" onClick={() => setAddDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               Добавить товар
             </Button>
@@ -280,178 +375,242 @@ const AdminProducts = () => {
 
         {/* Products Table */}
         <div className="rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedProducts.length === products.length}
-                    onCheckedChange={toggleAll}
-                  />
-                </TableHead>
-                <TableHead>Товар</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Категория</TableHead>
-                <TableHead className="text-right">Цена</TableHead>
-                <TableHead className="text-right">Остаток</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
+          {productsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground mb-4">Товары не найдены</p>
+              <Button onClick={() => setAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить первый товар
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedProducts.includes(product.id)}
-                      onCheckedChange={() => toggleProduct(product.id)}
+                      checked={selectedProducts.length === products.length && products.length > 0}
+                      onCheckedChange={toggleAll}
                     />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-10 h-10 rounded-lg object-cover"
-                      />
-                      <span className="font-medium text-sm">{product.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {product.sku}
-                  </TableCell>
-                  <TableCell className="text-sm">{product.category}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {product.price.toLocaleString()} ₽
-                  </TableCell>
-                  <TableCell className="text-right">{product.stock}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusConfig[product.status].variant}>
-                      {statusConfig[product.status].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => navigate(`/admin/products/${product.id}`)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Просмотр
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/admin/products/${product.id}`)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openUploadDialog(product.id)}>
-                          <Image className="h-4 w-4 mr-2" />
-                          Загрузить фото
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Дублировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          AI-описание
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Удалить
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  </TableHead>
+                  <TableHead>Товар</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Категория</TableHead>
+                  <TableHead className="text-right">Цена</TableHead>
+                  <TableHead className="text-right">Остаток</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {products.map((product) => {
+                  const status = getProductStatus(product);
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedProducts.includes(product.id)}
+                          onCheckedChange={() => toggleProduct(product.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {product.images?.[0] ? (
+                            <img
+                              src={product.images[0]}
+                              alt={product.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                              Нет
+                            </div>
+                          )}
+                          <span className="font-medium text-sm line-clamp-1">{product.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {product.sku || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {product.categories?.name || "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {product.price.toLocaleString()} ₽
+                      </TableCell>
+                      <TableCell className="text-right">{product.stock_count ?? 0}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusConfig[status].variant}>
+                          {statusConfig[status].label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(product)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Редактировать
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/product/${product.slug}`)}>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Просмотр
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => deleteProduct.mutate(product.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Удалить
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-muted-foreground">
-            Показано 1-6 из 12,847 товаров
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>
-              Назад
-            </Button>
-            <Button variant="outline" size="sm">
-              Далее
-            </Button>
+        {products.length > 0 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-muted-foreground">
+              Показано {products.length} товаров
+            </p>
           </div>
-        </div>
+        )}
       </AdminLayout>
 
-      {/* Image Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-        <DialogContent className="max-w-lg">
+      {/* Add/Edit Product Dialog */}
+      <Dialog open={addDialogOpen || !!editProduct} onOpenChange={(open) => {
+        if (!open) {
+          setAddDialogOpen(false);
+          setEditProduct(null);
+          resetForm();
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Загрузка изображений товара</DialogTitle>
+            <DialogTitle>{editProduct ? "Редактировать товар" : "Добавить товар"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div
-              className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handleImageUpload(e.target.files)}
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Название *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Корм для собак"
               />
-              {uploadingImages ? (
-                <Loader2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground animate-spin" />
-              ) : (
-                <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-              )}
-              <p className="text-sm font-medium">
-                {uploadingImages ? "Загрузка..." : "Нажмите для выбора файлов"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PNG, JPG, WEBP до 10MB
-              </p>
             </div>
-
-            {uploadedImages.length > 0 && (
-              <div>
-                <Label className="text-sm">Загруженные изображения</Label>
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  {uploadedImages.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Uploaded ${index + 1}`}
-                        className="w-full h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => removeUploadedImage(url)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Цена *</Label>
+                <Input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="1990"
+                />
               </div>
-            )}
-
-            <div className="flex gap-2 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setUploadDialogOpen(false)}>
-                Отмена
-              </Button>
-              <Button className="flex-1" disabled={uploadedImages.length === 0}>
-                Сохранить ({uploadedImages.length})
-              </Button>
+              <div className="space-y-2">
+                <Label>Старая цена</Label>
+                <Input
+                  type="number"
+                  value={formData.old_price}
+                  onChange={(e) => setFormData({ ...formData, old_price: e.target.value })}
+                  placeholder="2490"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>SKU</Label>
+                <Input
+                  value={formData.sku}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  placeholder="RC-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Остаток</Label>
+                <Input
+                  type="number"
+                  value={formData.stock_count}
+                  onChange={(e) => setFormData({ ...formData, stock_count: e.target.value })}
+                  placeholder="100"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Категория</Label>
+              <Select
+                value={formData.category_id}
+                onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите категорию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Slug (URL)</Label>
+              <Input
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                placeholder="korm-dlya-sobak"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Описание</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Описание товара..."
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_active: !!checked })}
+              />
+              <Label>Активен (показывать на сайте)</Label>
             </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAddDialogOpen(false);
+              setEditProduct(null);
+              resetForm();
+            }}>
+              Отмена
+            </Button>
+            <Button onClick={handleSubmit} disabled={createProduct.isPending || updateProduct.isPending}>
+              {(createProduct.isPending || updateProduct.isPending) && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {editProduct ? "Сохранить" : "Добавить"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

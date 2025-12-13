@@ -1,8 +1,27 @@
+# BelBird — Интернет-магазин зоотоваров
+# Правила для поисковых роботов
+
 User-agent: Googlebot
 Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /auth
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin/
+Disallow: /account/
+
+User-agent: Yandex
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /auth
+Clean-param: utm_source&utm_medium&utm_campaign&utm_content&utm_term
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +31,18 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /auth
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://belbird.ru/sitemap.xml
+
+# Host (для Яндекса)
+Host: https://belbird.ru
+
+# Crawl delay
+Crawl-delay: 1
