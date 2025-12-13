@@ -265,16 +265,20 @@ const Product = () => {
 
   const buyNow = () => {
     if (!product) return;
-    addItem({
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      oldPrice: product.old_price,
-      quantity: quantity,
-      image: product.images?.[0] || "/placeholder.svg",
-      slug: product.slug,
+    // Navigate to checkout with direct buy product (not adding to cart)
+    navigate("/checkout", {
+      state: {
+        directBuy: {
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          oldPrice: product.old_price,
+          quantity: quantity,
+          image: product.images?.[0] || "/placeholder.svg",
+          slug: product.slug,
+        }
+      }
     });
-    navigate("/checkout");
   };
 
   const toggleFavorite = async () => {

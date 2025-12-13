@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2, MapPin, Gift, Minus, Plus, Tag } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -86,9 +86,28 @@ const paymentMethods: PaymentMethod[] = [
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const { items, getTotal, clearCart } = useCart();
+  const { items: cartItems, getTotal: getCartTotal, clearCart } = useCart();
   const { settings } = useSiteSettings();
+
+  // Check for direct buy product from navigation state
+  const directBuyProduct = location.state?.directBuy;
+  
+  // Use direct buy product or cart items
+  const items = useMemo(() => {
+    if (directBuyProduct) {
+      return [directBuyProduct];
+    }
+    return cartItems;
+  }, [directBuyProduct, cartItems]);
+
+  const getTotal = () => {
+    if (directBuyProduct) {
+      return directBuyProduct.price * directBuyProduct.quantity;
+    }
+    return getCartTotal();
+  };
   const [step, setStep] = useState(1);
   const [deliveryProvider, setDeliveryProvider] = useState("");
   const [deliveryPrice, setDeliveryPrice] = useState(0);
@@ -371,7 +390,10 @@ const Checkout = () => {
         }
       }
       
-      clearCart();
+      // Only clear cart if not a direct buy
+      if (!directBuyProduct) {
+        clearCart();
+      }
 
       // Show loyalty points earned
       const pointsEarned = user ? Math.floor(total * 0.03) : 0;
