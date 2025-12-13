@@ -50,15 +50,35 @@ const Product = () => {
     if (!id) return;
     
     setLoading(true);
-    const { data, error } = await supabase
+    
+    // Try to find by slug first, then by id
+    let query = supabase
       .from("products")
       .select(`
         id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku,
         brand:brands(name),
         category:categories(name, slug)
       `)
-      .or(`slug.eq.${id},id.eq.${id}`)
+      .eq('slug', id)
       .single();
+
+    let { data, error } = await query;
+
+    // If not found by slug, try by id (for UUID format)
+    if (error && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      const result = await supabase
+        .from("products")
+        .select(`
+          id, name, slug, description, price, old_price, images, features, rating, review_count, stock_count, sku,
+          brand:brands(name),
+          category:categories(name, slug)
+        `)
+        .eq('id', id)
+        .single();
+      
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error("Error loading product:", error);
