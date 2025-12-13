@@ -12,7 +12,15 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, productName, count = 5 } = await req.json();
+    const { 
+      productId, 
+      productName, 
+      count = 5, 
+      minRating = 3, 
+      maxRating = 5, 
+      tone = "mixed",
+      detailLevel = "medium"
+    } = await req.json();
 
     if (!productId || !productName) {
       return new Response(
@@ -29,26 +37,43 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating ${count} reviews for product: ${productName}`);
+    console.log(`Generating ${count} reviews for product: ${productName} (rating: ${minRating}-${maxRating}, tone: ${tone}, detail: ${detailLevel})`);
+
+    // Build tone description
+    const toneDescriptions: Record<string, string> = {
+      positive: "только положительные, довольные покупкой",
+      mixed: "смешанные (большинство положительных, но с небольшими замечаниями для реалистичности)",
+      critical: "с конструктивной критикой, указанием на реальные недостатки",
+      enthusiastic: "очень восторженные, эмоциональные, с восклицаниями"
+    };
+
+    // Build detail level description
+    const detailDescriptions: Record<string, string> = {
+      short: "краткие, 1-2 предложения, без лишних деталей",
+      medium: "средней длины, 3-5 предложений с конкретными деталями",
+      detailed: "развёрнутые, 6+ предложений с подробным описанием опыта использования"
+    };
 
     const prompt = `Сгенерируй ${count} реалистичных отзывов на русском языке для товара "${productName}".
 
 Требования:
-- Отзывы должны быть разнообразными (от восторженных до умеренно положительных)
-- Рейтинги от 3 до 5 звёзд (большинство 4-5)
-- Используй живой разговорный язык
-- Добавь конкретные детали про использование
-- Некоторые отзывы должны быть короткими, другие развёрнутыми
+- Рейтинги строго от ${minRating} до ${maxRating} звёзд (распределить равномерно)
+- Тональность отзывов: ${toneDescriptions[tone] || toneDescriptions.mixed}
+- Длина отзывов: ${detailDescriptions[detailLevel] || detailDescriptions.medium}
+- Используй живой разговорный русский язык
+- Добавь конкретные детали про использование товара
+- Каждый отзыв должен быть уникальным по стилю
+- Имитируй разных покупателей (молодые, пожилые, опытные, новички)
 
 Верни JSON массив объектов со структурой:
 {
   "reviews": [
     {
       "rating": 5,
-      "title": "Заголовок отзыва",
-      "content": "Текст отзыва",
-      "pros": "Что понравилось",
-      "cons": "Что не понравилось (может быть пустым или null)"
+      "title": "Заголовок отзыва (краткий, 3-7 слов)",
+      "content": "Основной текст отзыва",
+      "pros": "Что понравилось (1-3 пункта через запятую)",
+      "cons": "Что не понравилось (может быть null если рейтинг 5)"
     }
   ]
 }
