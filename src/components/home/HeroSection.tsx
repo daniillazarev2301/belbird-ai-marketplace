@@ -33,14 +33,14 @@ const HeroSection = () => {
 
           {/* Heading */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-semibold tracking-tight mb-4">
-            Всё для счастья
-            <span className="block text-primary">ваших любимых</span>
+            Зоотовары для всех
+            <span className="block text-primary">ваших питомцев</span>
           </h1>
 
           {/* Description */}
           <p className="text-lg text-muted-foreground mb-8 max-w-md">
-            Премиальные товары для питомцев, уютного дома и цветущего сада. 
-            С персональными рекомендациями от AI.
+            Корма и товары для домашних и сельскохозяйственных животных: собаки, кошки, птицы, 
+            грызуны, рыбки, а также куры, цыплята и другие. С AI-рекомендациями.
           </p>
 
           {/* CTA Buttons */}

@@ -5,70 +5,71 @@ import ProductCard, { Product } from "./ProductCard";
 const featuredProducts: Product[] = [
   {
     id: "1",
-    name: "Премиум корм для кошек Royal Canin Indoor",
-    price: 3290,
-    oldPrice: 3890,
+    name: "Премиум корм для собак Royal Canin Medium Adult",
+    price: 4290,
+    oldPrice: 4890,
     image: "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=400&h=400&fit=crop",
     rating: 4.9,
     reviewCount: 2341,
-    category: "Корма для кошек",
+    category: "Корма для собак",
     isBestseller: true,
     aiRecommended: true,
   },
   {
     id: "2",
-    name: "Ароматическая свеча с эфирными маслами",
+    name: "Корм для кошек Whiskas с курицей",
     price: 1490,
-    image: "https://images.unsplash.com/photo-1602607550528-80baf3b9c38a?w=400&h=400&fit=crop",
+    image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop",
     rating: 4.8,
     reviewCount: 856,
-    category: "Декор для дома",
+    category: "Корма для кошек",
     isNew: true,
   },
   {
     id: "3",
-    name: "Набор семян органических томатов",
-    price: 590,
-    oldPrice: 790,
-    image: "https://images.unsplash.com/photo-1592921870789-04563d55041c?w=400&h=400&fit=crop",
+    name: "Комбикорм для цыплят стартовый ПК-2",
+    price: 890,
+    oldPrice: 1090,
+    image: "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=400&h=400&fit=crop",
     rating: 4.7,
     reviewCount: 423,
-    category: "Семена",
+    category: "Сельхоз животные",
+    isBestseller: true,
   },
   {
     id: "4",
-    name: "Лежанка для собаки с ортопедическим дном",
+    name: "Клетка для попугая с аксессуарами",
     price: 4990,
-    image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400&h=400&fit=crop",
+    image: "https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=400&h=400&fit=crop",
     rating: 4.9,
     reviewCount: 1205,
-    category: "Аксессуары для собак",
+    category: "Птицы и попугаи",
     aiRecommended: true,
   },
   {
     id: "5",
-    name: "Комнатное растение Монстера в кашпо",
-    price: 2890,
-    image: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=400&h=400&fit=crop",
+    name: "Аквариум Tetra 60л с фильтром",
+    price: 5890,
+    image: "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=400&h=400&fit=crop",
     rating: 4.6,
     reviewCount: 678,
-    category: "Комнатные растения",
+    category: "Аквариумистика",
     isNew: true,
   },
   {
     id: "6",
-    name: "Эко-набор для уборки дома",
-    price: 1890,
-    oldPrice: 2390,
-    image: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&h=400&fit=crop",
+    name: "Корм для кур-несушек ПК-1",
+    price: 1290,
+    oldPrice: 1590,
+    image: "https://images.unsplash.com/photo-1569127959161-2b1297b2d9a6?w=400&h=400&fit=crop",
     rating: 4.8,
     reviewCount: 932,
-    category: "Бытовая химия",
+    category: "Сельхоз животные",
     isBestseller: true,
   },
   {
     id: "7",
-    name: "Когтеточка-домик для кошки",
+    name: "Домик-когтеточка для кошки",
     price: 6490,
     image: "https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=400&h=400&fit=crop",
     rating: 4.7,
@@ -77,12 +78,12 @@ const featuredProducts: Product[] = [
   },
   {
     id: "8",
-    name: "Садовый секатор профессиональный",
-    price: 1290,
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=400&fit=crop",
+    name: "Корм для хомяков и морских свинок",
+    price: 590,
+    image: "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=400&h=400&fit=crop",
     rating: 4.9,
     reviewCount: 1089,
-    category: "Инструменты",
+    category: "Грызуны",
     aiRecommended: true,
   },
 ];
@@ -97,18 +98,18 @@ const FeaturedProducts = () => {
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-5 w-5 text-primary" />
               <span className="text-sm font-medium text-primary">
-                AI-подборка
+                Популярные товары
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-serif font-semibold">
-              Рекомендуем для вас
+              Хиты продаж
             </h2>
           </div>
           <Link
             to="/catalog"
             className="hidden md:flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
           >
-            Все рекомендации
+            Все товары
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -125,7 +126,7 @@ const FeaturedProducts = () => {
           to="/catalog"
           className="flex md:hidden items-center justify-center gap-2 text-sm font-medium text-primary mt-6 py-3"
         >
-          Все рекомендации
+          Все товары
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
