@@ -14,6 +14,8 @@ import Product from "./pages/Product";
 import Auth from "./pages/Auth";
 import Catalog from "./pages/Catalog";
 import StaticPage from "./pages/StaticPage";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminProductEdit from "./pages/admin/AdminProductEdit";
@@ -71,7 +73,8 @@ const App = () => (
               <Route path="/returns" element={<StaticPage />} />
               <Route path="/faq" element={<StaticPage />} />
               <Route path="/contacts" element={<StaticPage />} />
-              <Route path="/blog" element={<StaticPage />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/careers" element={<StaticPage />} />
               <Route path="/partners" element={<StaticPage />} />
               

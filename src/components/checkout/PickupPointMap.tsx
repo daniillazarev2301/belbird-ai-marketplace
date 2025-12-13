@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MapPin, Loader2, X, Navigation, Search } from "lucide-react";
+import { MapPin, Loader2, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -69,16 +69,24 @@ const PickupPointMap = ({ provider, city, onSelect, selectedPoint }: PickupPoint
     };
   }, []);
 
-  // Fetch pickup points
+  // Fetch pickup points from API
   const fetchPickupPoints = useCallback(async () => {
     if (!city || !provider) return;
 
     setLoading(true);
     try {
-      // Simulate pickup points - in production, call provider APIs
-      const mockPoints: PickupPoint[] = generateMockPoints(provider, city);
-      setPoints(mockPoints);
-      setFilteredPoints(mockPoints);
+      const { data, error } = await supabase.functions.invoke('pickup-points', {
+        body: { provider, city },
+      });
+
+      if (error) {
+        console.error("Error fetching pickup points:", error);
+        return;
+      }
+
+      const fetchedPoints = data?.points || [];
+      setPoints(fetchedPoints);
+      setFilteredPoints(fetchedPoints);
     } catch (err) {
       console.error("Error fetching pickup points:", err);
     } finally {
@@ -300,51 +308,5 @@ const PickupPointMap = ({ provider, city, onSelect, selectedPoint }: PickupPoint
     </div>
   );
 };
-
-// Mock data generator - in production, call actual provider APIs
-function generateMockPoints(provider: string, city: string): PickupPoint[] {
-  const cityCoords: Record<string, { lat: number; lng: number }> = {
-    "Москва": { lat: 55.7558, lng: 37.6173 },
-    "Санкт-Петербург": { lat: 59.9343, lng: 30.3351 },
-    "Казань": { lat: 55.7879, lng: 49.1233 },
-    "Новосибирск": { lat: 55.0084, lng: 82.9357 },
-    "Екатеринбург": { lat: 56.8389, lng: 60.6057 },
-  };
-
-  const base = cityCoords[city] || { lat: 55.7558, lng: 37.6173 };
-  const providerName = provider === "cdek" ? "СДЭК" : provider === "boxberry" ? "Boxberry" : "Почта России";
-
-  return Array.from({ length: 15 }, (_, i) => ({
-    id: `${provider}-${i + 1}`,
-    name: `${providerName} №${i + 1}`,
-    address: `г. ${city}, ул. ${getRandomStreet()}, д. ${Math.floor(Math.random() * 150) + 1}`,
-    city,
-    lat: base.lat + (Math.random() - 0.5) * 0.1,
-    lng: base.lng + (Math.random() - 0.5) * 0.15,
-    provider,
-    workTime: getRandomWorkTime(),
-    phone: `+7 (${800 + Math.floor(Math.random() * 100)}) ${String(Math.floor(Math.random() * 10000000)).padStart(7, "0")}`,
-  }));
-}
-
-function getRandomStreet(): string {
-  const streets = [
-    "Ленина", "Пушкина", "Гагарина", "Мира", "Советская", 
-    "Центральная", "Московская", "Октябрьская", "Победы", "Комсомольская",
-    "Садовая", "Лесная", "Новая", "Школьная", "Молодежная"
-  ];
-  return streets[Math.floor(Math.random() * streets.length)];
-}
-
-function getRandomWorkTime(): string {
-  const options = [
-    "Пн-Пт: 10:00-20:00, Сб-Вс: 10:00-18:00",
-    "Ежедневно: 09:00-21:00",
-    "Пн-Вс: 10:00-22:00",
-    "Пн-Сб: 09:00-19:00",
-    "Круглосуточно",
-  ];
-  return options[Math.floor(Math.random() * options.length)];
-}
 
 export default PickupPointMap;
