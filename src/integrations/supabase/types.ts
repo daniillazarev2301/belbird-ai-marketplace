@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      blog_posts: {
+        Row: {
+          author_id: string | null
+          category: string | null
+          content: string | null
+          cover_image: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          is_published: boolean | null
+          meta_description: string | null
+          meta_title: string | null
+          published_at: string | null
+          slug: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          views_count: number | null
+        }
+        Insert: {
+          author_id?: string | null
+          category?: string | null
+          content?: string | null
+          cover_image?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          slug: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Update: {
+          author_id?: string | null
+          category?: string | null
+          content?: string | null
+          cover_image?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          slug?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          views_count?: number | null
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           created_at: string | null
@@ -100,6 +187,45 @@ export type Database = {
           id?: string
           role?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      delivery_zones: {
+        Row: {
+          base_cost: number | null
+          created_at: string
+          delivery_days_max: number | null
+          delivery_days_min: number | null
+          free_threshold: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          provider: string
+          zone_code: string | null
+        }
+        Insert: {
+          base_cost?: number | null
+          created_at?: string
+          delivery_days_max?: number | null
+          delivery_days_min?: number | null
+          free_threshold?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          provider: string
+          zone_code?: string | null
+        }
+        Update: {
+          base_cost?: number | null
+          created_at?: string
+          delivery_days_max?: number | null
+          delivery_days_min?: number | null
+          free_threshold?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          provider?: string
+          zone_code?: string | null
         }
         Relationships: []
       }
@@ -294,6 +420,65 @@ export type Database = {
         }
         Relationships: []
       }
+      product_comparisons: {
+        Row: {
+          created_at: string
+          id: string
+          product_ids: string[]
+          session_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_ids?: string[]
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_ids?: string[]
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      product_views: {
+        Row: {
+          id: string
+          product_id: string
+          session_id: string | null
+          user_id: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          session_id?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          session_id?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_views_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand_id: string | null
@@ -462,6 +647,65 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          cons: string | null
+          content: string | null
+          created_at: string
+          helpful_count: number | null
+          id: string
+          images: string[] | null
+          is_approved: boolean | null
+          is_verified_purchase: boolean | null
+          product_id: string
+          pros: string | null
+          rating: number
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cons?: string | null
+          content?: string | null
+          created_at?: string
+          helpful_count?: number | null
+          id?: string
+          images?: string[] | null
+          is_approved?: boolean | null
+          is_verified_purchase?: boolean | null
+          product_id: string
+          pros?: string | null
+          rating: number
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cons?: string | null
+          content?: string | null
+          created_at?: string
+          helpful_count?: number | null
+          id?: string
+          images?: string[] | null
+          is_approved?: boolean | null
+          is_verified_purchase?: boolean | null
+          product_id?: string
+          pros?: string | null
+          rating?: number
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           created_at: string | null
@@ -503,6 +747,36 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wishlist_shares: {
+        Row: {
+          created_at: string
+          id: string
+          is_public: boolean | null
+          product_ids: string[]
+          share_code: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_public?: boolean | null
+          product_ids?: string[]
+          share_code: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_public?: boolean | null
+          product_ids?: string[]
+          share_code?: string
+          title?: string | null
           user_id?: string
         }
         Relationships: []
