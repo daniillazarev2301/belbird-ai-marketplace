@@ -1,8 +1,73 @@
+import { useState, useEffect } from "react";
 import { ArrowRight, Clock, Percent } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useSiteSettings, PromoCard } from "@/hooks/useSiteSettings";
 
 const PromoSection = () => {
+  const { settings } = useSiteSettings();
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  
+  const promoCards = settings?.promo_cards?.cards?.filter((c: PromoCard) => c.is_active) || [];
+  const mainPromo = promoCards.find((c: PromoCard) => c.type === "main");
+  const flashSale = promoCards.find((c: PromoCard) => c.type === "flash_sale");
+  const subscription = promoCards.find((c: PromoCard) => c.type === "subscription");
+
+  // Countdown timer for flash sale
+  useEffect(() => {
+    if (!flashSale?.end_time) return;
+
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const endTime = new Date(flashSale.end_time!).getTime();
+      const diff = endTime - now;
+
+      if (diff <= 0) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      setTimeLeft({
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
+      });
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [flashSale?.end_time]);
+
+  // Default data if no settings configured
+  const defaultMainPromo = {
+    title: "Скидка 20% на первый заказ",
+    description: "Используйте промокод BELBIRD20 при оформлении заказа",
+    button_text: "Использовать",
+    button_link: "/catalog",
+    badge: "Специальное предложение",
+  };
+
+  const defaultFlashSale = {
+    title: "Товары дня до -50%",
+    description: "Осталось 2 часа 15 минут",
+    button_text: "Смотреть",
+    button_link: "/catalog",
+    badge: "Flash Sale",
+  };
+
+  const defaultSubscription = {
+    title: "Подписка на корм",
+    description: "Экономьте до 15% с регулярной доставкой",
+    button_text: "Узнать больше",
+    button_link: "/account/subscriptions",
+    badge: "Выгодно",
+  };
+
+  const main = mainPromo || defaultMainPromo;
+  const flash = flashSale || defaultFlashSale;
+  const sub = subscription || defaultSubscription;
+
   return (
     <section className="py-12 md:py-16">
       <div className="container px-4 md:px-6">
@@ -13,14 +78,14 @@ const PromoSection = () => {
               <div className="flex items-center gap-2 mb-4">
                 <Percent className="h-5 w-5" />
                 <span className="text-sm font-medium opacity-90">
-                  Специальное предложение
+                  {main.badge || "Специальное предложение"}
                 </span>
               </div>
               <h3 className="text-2xl md:text-3xl font-serif font-semibold mb-3">
-                Скидка 20% на первый заказ
+                {main.title}
               </h3>
               <p className="text-base opacity-80 mb-6 max-w-sm">
-                Используйте промокод BELBIRD20 при оформлении заказа
+                {main.description}
               </p>
               <Button
                 variant="secondary"
@@ -28,8 +93,8 @@ const PromoSection = () => {
                 className="gap-2"
                 asChild
               >
-                <Link to="/catalog">
-                  Использовать
+                <Link to={main.button_link || "/catalog"}>
+                  {main.button_text || "Использовать"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -48,30 +113,37 @@ const PromoSection = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <Clock className="h-4 w-4 text-secondary" />
                     <span className="text-sm font-medium text-secondary">
-                      Flash Sale
+                      {flash.badge || "Flash Sale"}
                     </span>
                   </div>
                   <h4 className="text-lg font-semibold mb-1">
-                    Товары дня до -50%
+                    {flash.title}
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">
-                    Осталось 2 часа 15 минут
+                    {flashSale?.end_time 
+                      ? `Осталось ${timeLeft.hours}ч ${timeLeft.minutes}м`
+                      : flash.description
+                    }
                   </p>
                   <Link
-                    to="/catalog"
+                    to={flash.button_link || "/catalog"}
                     className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
                   >
-                    Смотреть
+                    {flash.button_text || "Смотреть"}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
                 <div className="flex gap-2 text-center">
                   <div className="px-3 py-2 rounded-lg bg-secondary/20">
-                    <p className="text-xl font-bold text-secondary">02</p>
+                    <p className="text-xl font-bold text-secondary">
+                      {flashSale?.end_time ? String(timeLeft.hours).padStart(2, '0') : "02"}
+                    </p>
                     <p className="text-xs text-muted-foreground">часа</p>
                   </div>
                   <div className="px-3 py-2 rounded-lg bg-secondary/20">
-                    <p className="text-xl font-bold text-secondary">15</p>
+                    <p className="text-xl font-bold text-secondary">
+                      {flashSale?.end_time ? String(timeLeft.minutes).padStart(2, '0') : "15"}
+                    </p>
                     <p className="text-xs text-muted-foreground">мин</p>
                   </div>
                 </div>
@@ -82,19 +154,19 @@ const PromoSection = () => {
             <div className="relative overflow-hidden rounded-2xl bg-accent p-5 md:p-6">
               <div>
                 <span className="inline-block px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded mb-2">
-                  Выгодно
+                  {sub.badge || "Выгодно"}
                 </span>
                 <h4 className="text-lg font-semibold mb-1">
-                  Подписка на корм
+                  {sub.title}
                 </h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Экономьте до 15% с регулярной доставкой
+                  {sub.description}
                 </p>
                 <Link
-                  to="/account/subscriptions"
+                  to={sub.button_link || "/account/subscriptions"}
                   className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:gap-3 transition-all"
                 >
-                  Узнать больше
+                  {sub.button_text || "Узнать больше"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

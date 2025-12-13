@@ -68,7 +68,25 @@ export interface FeatureSettings {
   enable_chat: boolean;
 }
 
-export type SettingsKey = 'general' | 'contacts' | 'social' | 'seo' | 'delivery' | 'delivery_providers' | 'payment' | 'features';
+export interface PromoCard {
+  id: string;
+  type: "main" | "flash_sale" | "subscription";
+  title: string;
+  description: string;
+  badge?: string;
+  button_text: string;
+  button_link: string;
+  is_active: boolean;
+  end_time?: string; // ISO date string for flash sale countdown
+  discount_percent?: number;
+  bg_color?: string;
+}
+
+export interface PromoCardsSettings {
+  cards: PromoCard[];
+}
+
+export type SettingsKey = 'general' | 'contacts' | 'social' | 'seo' | 'delivery' | 'delivery_providers' | 'payment' | 'features' | 'promo_cards';
 
 export function useSiteSettings() {
   const queryClient = useQueryClient();
@@ -96,6 +114,7 @@ export function useSiteSettings() {
         delivery_providers: DeliveryProvidersSettings;
         payment: PaymentSettings;
         features: FeatureSettings;
+        promo_cards: PromoCardsSettings;
       };
     },
   });

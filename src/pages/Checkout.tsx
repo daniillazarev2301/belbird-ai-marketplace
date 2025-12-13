@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2, MapPin, Gift, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Truck, CreditCard, Wallet, Building2, Clock, Shield, Check, ChevronDown, ShoppingBag, Loader2, MapPin, Gift, Minus, Plus, Tag } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MobileNav from "@/components/layout/MobileNav";
@@ -102,6 +102,11 @@ const Checkout = () => {
   const [userPoints, setUserPoints] = useState(0);
   const [usePoints, setUsePoints] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoError, setPromoError] = useState("");
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount_percent?: number; discount_amount?: number } | null>(null);
   const alfaBankEnabled = settings?.payment?.alfa_bank_enabled ?? false;
 
   // Check if user is authenticated and load loyalty points
@@ -156,7 +161,79 @@ const Checkout = () => {
   const subtotal = getTotal();
   const maxPointsToUse = Math.min(userPoints, Math.floor(subtotal * 0.5)); // Max 50% of order
   const pointsDiscount = usePoints ? pointsToUse : 0;
-  const total = subtotal + deliveryPrice - pointsDiscount;
+  const total = subtotal + deliveryPrice - pointsDiscount - promoDiscount;
+
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) return;
+    
+    setIsApplyingPromo(true);
+    setPromoError("");
+    
+    try {
+      const { data: promo, error } = await supabase
+        .from("promo_codes")
+        .select("*")
+        .eq("code", promoCode.toUpperCase().trim())
+        .eq("is_active", true)
+        .single();
+
+      if (error || !promo) {
+        setPromoError("Промокод не найден или недействителен");
+        setPromoDiscount(0);
+        setAppliedPromo(null);
+        return;
+      }
+
+      // Check validity dates
+      if (promo.valid_from && new Date(promo.valid_from) > new Date()) {
+        setPromoError("Промокод ещё не активен");
+        return;
+      }
+      if (promo.valid_until && new Date(promo.valid_until) < new Date()) {
+        setPromoError("Срок действия промокода истёк");
+        return;
+      }
+
+      // Check min order amount
+      if (promo.min_order_amount && subtotal < promo.min_order_amount) {
+        setPromoError(`Минимальная сумма заказа: ${promo.min_order_amount.toLocaleString()} ₽`);
+        return;
+      }
+
+      // Check usage limit
+      if (promo.max_uses && promo.used_count >= promo.max_uses) {
+        setPromoError("Промокод исчерпан");
+        return;
+      }
+
+      // Calculate discount
+      let discount = 0;
+      if (promo.discount_percent) {
+        discount = Math.floor(subtotal * promo.discount_percent / 100);
+      } else if (promo.discount_amount) {
+        discount = promo.discount_amount;
+      }
+
+      setPromoDiscount(discount);
+      setAppliedPromo({
+        code: promo.code,
+        discount_percent: promo.discount_percent,
+        discount_amount: promo.discount_amount,
+      });
+      toast({ title: "Промокод применён!", description: `Скидка: ${discount.toLocaleString()} ₽` });
+    } catch (err) {
+      setPromoError("Ошибка проверки промокода");
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const removePromoCode = () => {
+    setPromoCode("");
+    setPromoDiscount(0);
+    setAppliedPromo(null);
+    setPromoError("");
+  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -599,10 +676,62 @@ const Checkout = () => {
                     <span className="text-muted-foreground">Доставка</span>
                     <span>{deliveryPrice === 0 ? "Бесплатно" : `${deliveryPrice.toLocaleString()} ₽`}</span>
                   </div>
+                  {promoDiscount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Промокод ({appliedPromo?.code})</span>
+                      <span>-{promoDiscount.toLocaleString()} ₽</span>
+                    </div>
+                  )}
                   {pointsDiscount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Скидка бонусами</span>
                       <span>-{pointsDiscount.toLocaleString()} ₽</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Promo Code Section */}
+                <Separator className="my-4" />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Промокод</span>
+                  </div>
+                  {appliedPromo ? (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-green-50 border border-green-200">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-700">{appliedPromo.code}</span>
+                        <span className="text-xs text-green-600">
+                          {appliedPromo.discount_percent ? `-${appliedPromo.discount_percent}%` : `-${appliedPromo.discount_amount?.toLocaleString()} ₽`}
+                        </span>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={removePromoCode}>
+                        Удалить
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Введите промокод"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          className="h-9"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-9"
+                          onClick={applyPromoCode}
+                          disabled={!promoCode.trim() || isApplyingPromo}
+                        >
+                          {isApplyingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Применить"}
+                        </Button>
+                      </div>
+                      {promoError && (
+                        <p className="text-xs text-destructive">{promoError}</p>
+                      )}
                     </div>
                   )}
                 </div>
