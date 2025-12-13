@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import DeliveryCalculator from "@/components/checkout/DeliveryCalculator";
 import PickupPointMap from "@/components/checkout/PickupPointMap";
+import SavedAddresses from "@/components/checkout/SavedAddresses";
 
 interface PickupPoint {
   id: string;
@@ -30,6 +31,22 @@ interface PickupPoint {
   provider: string;
   workTime?: string;
   phone?: string;
+}
+
+interface SavedAddress {
+  id: string;
+  name: string;
+  city: string;
+  street: string | null;
+  house: string | null;
+  apartment: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  is_default: boolean;
+  provider: string | null;
+  pickup_point_id: string | null;
+  pickup_point_name: string | null;
+  pickup_point_address: string | null;
 }
 
 interface PaymentMethod {
@@ -79,8 +96,32 @@ const Checkout = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null);
-  
+  const [selectedAddressId, setSelectedAddressId] = useState<string | undefined>(undefined);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const alfaBankEnabled = settings?.payment?.alfa_bank_enabled ?? false;
+
+  // Check if user is authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+    checkAuth();
+  }, []);
+
+  const handleSelectSavedAddress = (address: SavedAddress) => {
+    setSelectedAddressId(address.id);
+    setAddressData({
+      city: address.city,
+      street: address.street || "",
+      house: address.house || "",
+      apartment: address.apartment || "",
+      comment: "",
+    });
+    if (address.phone) {
+      setContactData(prev => ({ ...prev, phone: address.phone || prev.phone }));
+    }
+  };
 
   const [contactData, setContactData] = useState({
     name: "",
@@ -328,10 +369,24 @@ const Checkout = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Saved Addresses - only for authenticated users */}
+                {isAuthenticated && (
+                  <>
+                    <SavedAddresses
+                      onSelect={handleSelectSavedAddress}
+                      selectedAddressId={selectedAddressId}
+                    />
+                    <Separator />
+                  </>
+                )}
+
                 {/* Delivery Calculator with API Integration */}
                 <DeliveryCalculator
                   city={addressData.city}
-                  onCityChange={(city) => setAddressData({ ...addressData, city })}
+                  onCityChange={(city) => {
+                    setAddressData({ ...addressData, city });
+                    setSelectedAddressId(undefined); // Clear saved address selection when city changes
+                  }}
                   selectedProvider={deliveryProvider}
                   onProviderChange={setDeliveryProvider}
                   onPriceChange={setDeliveryPrice}

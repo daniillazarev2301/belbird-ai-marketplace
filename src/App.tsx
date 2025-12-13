@@ -39,6 +39,7 @@ import AccountSubscriptions from "./pages/account/AccountSubscriptions";
 import AccountLoyalty from "./pages/account/AccountLoyalty";
 import AccountFavorites from "./pages/account/AccountFavorites";
 import AccountSettings from "./pages/account/AccountSettings";
+import AccountAddresses from "./pages/account/AccountAddresses";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="/account/subscriptions" element={<AccountSubscriptions />} />
               <Route path="/account/loyalty" element={<AccountLoyalty />} />
               <Route path="/account/settings" element={<AccountSettings />} />
+              <Route path="/account/addresses" element={<AccountAddresses />} />
               
               {/* Admin */}
               <Route path="/admin" element={<AdminDashboard />} />

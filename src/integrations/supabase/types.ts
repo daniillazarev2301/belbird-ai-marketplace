@@ -706,6 +706,63 @@ export type Database = {
           },
         ]
       }
+      saved_addresses: {
+        Row: {
+          apartment: string | null
+          city: string
+          created_at: string
+          house: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          phone: string | null
+          pickup_point_address: string | null
+          pickup_point_id: string | null
+          pickup_point_name: string | null
+          postal_code: string | null
+          provider: string | null
+          street: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apartment?: string | null
+          city: string
+          created_at?: string
+          house?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          phone?: string | null
+          pickup_point_address?: string | null
+          pickup_point_id?: string | null
+          pickup_point_name?: string | null
+          postal_code?: string | null
+          provider?: string | null
+          street?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          apartment?: string | null
+          city?: string
+          created_at?: string
+          house?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          phone?: string | null
+          pickup_point_address?: string | null
+          pickup_point_id?: string | null
+          pickup_point_name?: string | null
+          postal_code?: string | null
+          provider?: string | null
+          street?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           created_at: string | null
