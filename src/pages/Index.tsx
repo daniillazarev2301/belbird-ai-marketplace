@@ -10,6 +10,7 @@ import PromoSection from "@/components/home/PromoSection";
 import BenefitsSection from "@/components/home/BenefitsSection";
 import AIRecommendations from "@/components/home/AIRecommendations";
 import AIChatWidget from "@/components/chat/AIChatWidget";
+import { PWAInstallPrompt } from "@/components/home/PWAInstallPrompt";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const Index = () => {
@@ -83,6 +84,7 @@ const Index = () => {
         <Footer />
         <MobileNav />
         {features?.enable_chat !== false && <AIChatWidget />}
+        <PWAInstallPrompt />
       </div>
     </>
   );

@@ -248,101 +248,21 @@ const AdminSettings = () => {
         <title>Настройки — BelBird Admin</title>
       </Helmet>
       <AdminLayout title="Настройки" description="Конфигурация платформы">
-        <Tabs defaultValue="general" className="space-y-6">
+        <Tabs defaultValue="team" className="space-y-6">
           <TabsList className="flex-wrap h-auto gap-2">
-            <TabsTrigger value="general" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Общие
-            </TabsTrigger>
             <TabsTrigger value="team" className="gap-2">
               <Users className="h-4 w-4" />
               Команда
+            </TabsTrigger>
+            <TabsTrigger value="permissions" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Права доступа
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               Уведомления
             </TabsTrigger>
           </TabsList>
-
-          {/* General Settings */}
-          <TabsContent value="general" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Основные настройки</CardTitle>
-                <CardDescription>Базовые параметры магазина</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Название магазина</Label>
-                    <Input defaultValue="BelBird" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email поддержки</Label>
-                    <Input defaultValue="support@belbird.ru" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Телефон</Label>
-                    <Input defaultValue="+7 800 123 45 67" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Валюта</Label>
-                    <Select defaultValue="rub">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="rub">RUB (₽)</SelectItem>
-                        <SelectItem value="usd">USD ($)</SelectItem>
-                        <SelectItem value="eur">EUR (€)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button>
-                  <Save className="h-4 w-4 mr-2" />
-                  Сохранить изменения
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>AI-функции</CardTitle>
-                <CardDescription>Управление AI-модулями платформы</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">AI-рекомендации</p>
-                    <p className="text-sm text-muted-foreground">Персонализированные рекомендации товаров</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">AI-консультант</p>
-                    <p className="text-sm text-muted-foreground">Чат-бот на сайте</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">AI-генерация контента</p>
-                    <p className="text-sm text-muted-foreground">Описания товаров и SEO</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Прогноз спроса</p>
-                    <p className="text-sm text-muted-foreground">AI-аналитика продаж</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Team Management */}
           <TabsContent value="team" className="space-y-6">
@@ -436,6 +356,10 @@ const AdminSettings = () => {
               </CardContent>
             </Card>
 
+          </TabsContent>
+
+          {/* Permissions */}
+          <TabsContent value="permissions" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Права доступа</CardTitle>
