@@ -48,6 +48,8 @@ const AdminStories = lazy(() => import("./pages/admin/AdminStories"));
 const AdminABTests = lazy(() => import("./pages/admin/AdminABTests"));
 const AdminPushNotifications = lazy(() => import("./pages/admin/AdminPushNotifications"));
 const AdminPromoCards = lazy(() => import("./pages/admin/AdminPromoCards"));
+const AdminActivityLog = lazy(() => import("./pages/admin/AdminActivityLog"));
+const AdminProfile = lazy(() => import("./pages/admin/AdminProfile"));
 
 // Account pages
 const AccountProfile = lazy(() => import("./pages/account/AccountProfile"));
@@ -134,6 +136,8 @@ const App = () => (
                 <Route path="/admin/promo-cards" element={<AdminPromoCards />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 <Route path="/admin/site-settings" element={<AdminSiteSettings />} />
+                <Route path="/admin/activity-log" element={<AdminActivityLog />} />
+                <Route path="/admin/profile" element={<AdminProfile />} />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>
