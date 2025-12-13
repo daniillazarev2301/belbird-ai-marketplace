@@ -1,4 +1,4 @@
-import { Search, ShoppingCart, User, Menu, Heart, Mic, Percent } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, Heart, Mic, Percent, Camera } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 import { CategoryMenu } from "./CategoryMenu";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import VoiceSearch from "@/components/search/VoiceSearch";
+import VisualSearch from "@/components/search/VisualSearch";
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  images: string[] | null;
+}
 
 interface SearchResult {
   id: string;
@@ -26,12 +34,9 @@ const Header = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isVoiceSearchOpen, setIsVoiceSearchOpen] = useState(false);
+  const [isVisualSearchOpen, setIsVisualSearchOpen] = useState(false);
   const navigate = useNavigate();
-  const { getItemCount } = useCart();
-  const cartCount = getItemCount();
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  const siteName = settings?.general?.site_name || "BelBird";
   const logoUrl = settings?.general?.logo_url;
 
   useEffect(() => {
@@ -159,12 +164,20 @@ const Header = () => {
               }}
               onBlur={() => setIsSearchFocused(false)}
             />
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
+            <button 
+              type="button" 
+              className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+              onClick={() => setIsVisualSearchOpen(true)}
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+            <button 
+              type="button" 
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+              onClick={() => setIsVoiceSearchOpen(true)}
+            >
               <Mic className="h-4 w-4" />
             </button>
-          </form>
-
-          {/* Search Results Dropdown */}
           {showResults && searchResults.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg z-50 overflow-hidden">
               {searchResults.map((result) => (
@@ -268,6 +281,19 @@ const Header = () => {
           </Sheet>
         </div>
       </div>
+
+      <VoiceSearch
+        isOpen={isVoiceSearchOpen}
+        onOpenChange={setIsVoiceSearchOpen}
+        onResult={(text) => {
+          setSearchQuery(text);
+          navigate(`/search?q=${encodeURIComponent(text)}`);
+        }}
+      />
+      <VisualSearch
+        isOpen={isVisualSearchOpen}
+        onOpenChange={setIsVisualSearchOpen}
+      />
     </header>
   );
 };
