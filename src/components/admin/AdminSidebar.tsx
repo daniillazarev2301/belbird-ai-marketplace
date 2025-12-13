@@ -16,7 +16,8 @@ import {
   BookOpen,
   Truck,
   PlayCircle,
-  FlaskConical
+  FlaskConical,
+  Bell
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -69,6 +70,7 @@ const salesItems = [
 const settingsItems = [
   { title: "Настройки сайта", url: "/admin/site-settings", icon: Globe },
   { title: "Доставка", url: "/admin/delivery", icon: Truck },
+  { title: "Push-рассылки", url: "/admin/push-notifications", icon: Bell },
   { title: "A/B Тесты", url: "/admin/ab-tests", icon: FlaskConical },
   { title: "Роли и доступы", url: "/admin/settings", icon: Settings },
 ];

@@ -12,6 +12,7 @@ import { CategoryMenu } from "./CategoryMenu";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import VoiceSearch from "@/components/search/VoiceSearch";
 import VisualSearch from "@/components/search/VisualSearch";
+import { UserNotifications } from "@/components/notifications/UserNotifications";
 
 interface SearchResult {
   id: string;
@@ -211,7 +212,8 @@ const Header = () => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <UserNotifications />
           <Button variant="ghost" size="icon" className="hidden sm:flex" asChild>
             <Link to="/account/favorites">
               <Heart className="h-5 w-5" />
