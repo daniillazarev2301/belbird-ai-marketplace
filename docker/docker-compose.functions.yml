@@ -1,0 +1,222 @@
+version: '3.8'
+
+# Docker Compose для запуска Edge Functions на VDS с Deno
+# Использование: docker-compose -f docker-compose.functions.yml up -d
+
+services:
+  # AI Chat функция
+  edge-ai-chat:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-ai-chat
+    restart: unless-stopped
+    ports:
+      - "9001:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+    volumes:
+      - ../supabase/functions/ai-chat:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Alfa-Bank Payment функция
+  edge-alfa-bank-payment:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-alfa-bank-payment
+    restart: unless-stopped
+    ports:
+      - "9002:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - ../supabase/functions/alfa-bank-payment:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Delivery Calculate функция
+  edge-delivery-calculate:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-delivery-calculate
+    restart: unless-stopped
+    ports:
+      - "9003:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - ../supabase/functions/delivery-calculate:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Pickup Points функция
+  edge-pickup-points:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-pickup-points
+    restart: unless-stopped
+    ports:
+      - "9004:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - CDEK_CLIENT_ID=${CDEK_CLIENT_ID}
+      - CDEK_CLIENT_SECRET=${CDEK_CLIENT_SECRET}
+      - CDEK_TEST_MODE=${CDEK_TEST_MODE:-true}
+      - BOXBERRY_TOKEN=${BOXBERRY_TOKEN}
+    volumes:
+      - ../supabase/functions/pickup-points:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Send Push функция
+  edge-send-push:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-send-push
+    restart: unless-stopped
+    ports:
+      - "9005:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+    volumes:
+      - ../supabase/functions/send-push:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Visual Search функция
+  edge-visual-search:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-visual-search
+    restart: unless-stopped
+    ports:
+      - "9006:8000"
+    environment:
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+    volumes:
+      - ../supabase/functions/visual-search:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Generate Blog Content функция
+  edge-generate-blog-content:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-generate-blog-content
+    restart: unless-stopped
+    ports:
+      - "9007:8000"
+    environment:
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+    volumes:
+      - ../supabase/functions/generate-blog-content:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Generate Category Content функция
+  edge-generate-category-content:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-generate-category-content
+    restart: unless-stopped
+    ports:
+      - "9008:8000"
+    environment:
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+    volumes:
+      - ../supabase/functions/generate-category-content:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Generate Product Content функция
+  edge-generate-product-content:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-generate-product-content
+    restart: unless-stopped
+    ports:
+      - "9009:8000"
+    environment:
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+    volumes:
+      - ../supabase/functions/generate-product-content:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Generate Reviews функция
+  edge-generate-reviews:
+    build:
+      context: .
+      dockerfile: Dockerfile.deno
+    container_name: edge-generate-reviews
+    restart: unless-stopped
+    ports:
+      - "9010:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - LOVABLE_API_KEY=${LOVABLE_API_KEY}
+    volumes:
+      - ../supabase/functions/generate-reviews:/app
+    command: ["run", "--allow-net", "--allow-env", "--allow-read", "/app/index.ts"]
+    networks:
+      - edge-functions
+
+  # Nginx reverse proxy для всех функций
+  edge-gateway:
+    image: nginx:alpine
+    container_name: edge-gateway
+    restart: unless-stopped
+    ports:
+      - "9000:80"
+    volumes:
+      - ./nginx-functions.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - edge-ai-chat
+      - edge-alfa-bank-payment
+      - edge-delivery-calculate
+      - edge-pickup-points
+      - edge-send-push
+      - edge-visual-search
+      - edge-generate-blog-content
+      - edge-generate-category-content
+      - edge-generate-product-content
+      - edge-generate-reviews
+    networks:
+      - edge-functions
+
+networks:
+  edge-functions:
+    driver: bridge

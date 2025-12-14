@@ -1,0 +1,17 @@
+# Dockerfile для запуска Deno Edge Functions
+FROM denoland/deno:1.40.2
+
+WORKDIR /app
+
+# Кэшируем зависимости при первом запуске
+RUN deno cache --reload https://deno.land/std@0.168.0/http/server.ts
+RUN deno cache --reload https://deno.land/std@0.190.0/http/server.ts
+RUN deno cache --reload https://esm.sh/@supabase/supabase-js@2
+RUN deno cache --reload https://esm.sh/@supabase/supabase-js@2.49.1
+RUN deno cache --reload https://deno.land/x/xhr@0.1.0/mod.ts
+
+# Порт по умолчанию
+EXPOSE 8000
+
+# Запуск Deno
+ENTRYPOINT ["deno"]
