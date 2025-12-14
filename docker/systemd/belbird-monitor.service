@@ -1,0 +1,19 @@
+[Unit]
+Description=BelBird Health Monitor with Telegram Alerts
+Documentation=https://belbird.ru
+After=docker.service belbird-functions.service
+
+[Service]
+Type=simple
+EnvironmentFile=/opt/belbird/docker/.env.monitor
+ExecStart=/opt/belbird/docker/scripts/monitor.sh --daemon 60
+Restart=always
+RestartSec=30
+
+# Логирование
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=belbird-monitor
+
+[Install]
+WantedBy=multi-user.target
