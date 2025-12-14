@@ -1,0 +1,18 @@
+[Unit]
+Description=BelBird GitHub Webhook Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/belbird/docker/scripts
+Environment=WEBHOOK_PORT=9999
+Environment=WEBHOOK_SECRET=your-webhook-secret-change-me
+Environment=DEPLOY_PATH=/opt/belbird
+Environment=WEB_PATH=/var/www/belbird
+ExecStart=/usr/bin/node webhook-server.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
