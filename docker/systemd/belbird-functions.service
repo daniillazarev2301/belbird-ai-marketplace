@@ -1,0 +1,29 @@
+[Unit]
+Description=BelBird Edge Functions (Docker Compose)
+Documentation=https://belbird.ru
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/belbird/docker
+EnvironmentFile=/opt/belbird/docker/.env
+
+# Запуск
+ExecStart=/usr/bin/docker compose -f docker-compose.functions.yml up -d --remove-orphans
+
+# Остановка
+ExecStop=/usr/bin/docker compose -f docker-compose.functions.yml down
+
+# Перезапуск при ошибках
+Restart=on-failure
+RestartSec=10
+
+# Таймауты
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
