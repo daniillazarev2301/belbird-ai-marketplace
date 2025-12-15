@@ -13,9 +13,40 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 -- 2. Создание enum для ролей
-CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
+DO $$ BEGIN
+  CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
--- 3. Функция проверки ролей (SECURITY DEFINER предотвращает рекурсию RLS)
+-- =====================================================
+-- ТАБЛИЦЫ (создаём сначала, до функций которые их используют)
+-- =====================================================
+
+-- Профили пользователей
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  phone TEXT,
+  avatar_url TEXT,
+  customer_notes TEXT,
+  customer_tags TEXT[],
+  loyalty_points INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Роли пользователей
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role app_role NOT NULL DEFAULT 'user',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE (user_id, role)
+);
+
+-- 3. Функция проверки ролей (ПОСЛЕ создания user_roles!)
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -30,33 +61,6 @@ AS $$
       AND role = _role
   )
 $$;
-
--- =====================================================
--- ТАБЛИЦЫ
--- =====================================================
-
--- Профили пользователей
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT,
-  full_name TEXT,
-  phone TEXT,
-  avatar_url TEXT,
-  customer_notes TEXT,
-  customer_tags TEXT[],
-  loyalty_points INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Роли пользователей
-CREATE TABLE public.user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  role app_role NOT NULL DEFAULT 'user',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  UNIQUE (user_id, role)
-);
 
 -- Категории
 CREATE TABLE public.categories (
