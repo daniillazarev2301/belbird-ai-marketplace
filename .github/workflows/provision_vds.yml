@@ -1,30 +1,133 @@
-name: Provision VDS on: workflow_dispatch: inputs: domain: description: "Primary domain (e.g. belbird.ru)" required: │
-│ true default: "belbird.ru" include_www: description: "Also configure www." required: true default: "true" email:     │
-│ description: "Email for Let's Encrypt" required: true default: "info@belbird.ru" jobs: provision: runs-on:           │
-│ ubuntu-latest steps: - name: Checkout uses: actions/checkout@v4 - name: Provision and Deploy on VDS uses:            │
-│ appleboy/ssh-action@v1.0.3 with: host: ${{ secrets.SSH_HOST }} username: ${{ secrets.SSH_USER }} password: ${{       │
-│ secrets.SSH_PASSWORD }} script: | set -euo pipefail DOMAIN="${{ github.event.inputs.domain }}" INCLUDE_WWW="${{      │
-│ github.event.inputs.include_www }}" LE_EMAIL="${{ github.event.inputs.email }}" REPO="${{ secrets.REPO ||            │
-│ 'https://github.com/daniillazarev2301/belbird-ai-marketplace' }}" BRANCH="${{ secrets.BRANCH || 'main' }}"           │
-│ APP_DIR="${{ secrets.APP_DIR || '/opt/belbird' }}" apt-get update -y apt-get upgrade -y apt-get install -y curl git  │
-│ ca-certificates gnupg lsb-release if ! command -v docker >/dev/null 2>&1; then curl -fsSL https://get.docker.com |   │
-│ sh systemctl enable docker systemctl start docker fi apt-get install -y nginx python3-certbot-nginx systemctl enable │
-│ nginx systemctl start nginx ufw allow OpenSSH || true ufw allow 'Nginx Full' || true ufw --force enable || true      │
-│ mkdir -p "${APP_DIR}" if [ ! -d "${APP_DIR}/.git" ]; then git clone -b "${BRANCH}" "${REPO}" "${APP_DIR}" else (cd   │
-│ "${APP_DIR}" && git fetch && git checkout "${BRANCH}" && git pull --rebase) fi cd "${APP_DIR}" cp -n                 │
-│ docker/.env.example docker/.env || true cp -n docker/.env.functions.example docker/.env.functions || true cp -n      │
-│ docker/.env.monitor.example docker/.env.monitor || true cp -n backend/.env.example backend/.env || true if grep -q   │
-│ '^PUBLIC_SITE_URL=' docker/.env 2>/dev/null; then sed -i "s|^PUBLIC_SITE_URL=.|PUBLIC_SITE_URL=https://${DOMAIN}|"   │
-│ docker/.env fi if grep -q '^DOMAIN=' docker/.env 2>/dev/null; then sed -i "s|^DOMAIN=.|DOMAIN=${DOMAIN}|"            │
-│ docker/.env fi if [ -d "${APP_DIR}/docker" ] && [ -f "${APP_DIR}/docker/scripts/start.sh" ]; then (cd                │
-│ "${APP_DIR}/docker" && bash scripts/start.sh || true) fi PORT_CANDIDATES="3000 5173 8080" FRONT_PORT="3000" for p in │
-│ $PORT_CANDIDATES; do if curl -sI "http://127.0.0.1:${p}" | head -n1 | grep -qi "HTTP/"; then FRONT_PORT="$p" break   │
-│ fi done NGX_CONF="/etc/nginx/sites-available/${DOMAIN}" { echo "server {" echo "  listen 80;" echo "  listen         │
-│ [::]:80;" printf "  server_name %s" "${DOMAIN}" if [ "${INCLUDE_WWW}" = "true" ]; then printf " www.%s" "${DOMAIN}"  │
-│ fi echo ";" echo "  location / {" echo "    proxy_pass http://127.0.0.1:${FRONT_PORT};" echo "    proxy_set_header   │
-│ Host $host;" echo "    proxy_set_header X-Real-IP $remote_addr;" echo "    proxy_set_header X-Forwarded-For          │
-│ $proxy_add_x_forwarded_for;" echo "    proxy_set_header X-Forwarded-Proto $scheme;" echo "  }" echo "}" } >          │
-│ "${NGX_CONF}" ln -sf "${NGX_CONF}" "/etc/nginx/sites-enabled/${DOMAIN}" nginx -t systemctl reload nginx if [         │
-│ "${INCLUDE_WWW}" = "true" ]; then certbot --nginx -d "${DOMAIN}" -d "www.${DOMAIN}" --email "${LE_EMAIL}"            │
-│ --agree-tos --no-eff-email -n || true else certbot --nginx -d "${DOMAIN}" --email "${LE_EMAIL}" --agree-tos          │
-│ --no-eff-email -n || true fi echo "=== Provision Finished ===" echo "Check: https://${DOMAIN}"
+name: Provision VDS
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Primary domain (e.g. belbird.ru)"
+        required: true
+        default: "belbird.ru"
+      include_www:
+        description: "Also configure www."
+        required: true
+        default: "true"
+      email:
+        description: "Email for Let's Encrypt"
+        required: true
+        default: "info@belbird.ru"
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Provision and Deploy on VDS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            set -euo pipefail
+
+            DOMAIN="${{ github.event.inputs.domain }}"
+            INCLUDE_WWW="${{ github.event.inputs.include_www }}"
+            LE_EMAIL="${{ github.event.inputs.email }}"
+
+            REPO="${{ secrets.REPO || 'https://github.com/daniillazarev2301/belbird-ai-marketplace' }}"
+            BRANCH="${{ secrets.BRANCH || 'main' }}"
+            APP_DIR="${{ secrets.APP_DIR || '/opt/belbird' }}"
+
+            apt-get update -y
+            apt-get upgrade -y
+            apt-get install -y curl git ca-certificates gnupg lsb-release
+
+            if ! command -v docker >/dev/null 2>&1; then
+              curl -fsSL https://get.docker.com | sh
+              systemctl enable docker
+              systemctl start docker
+            fi
+
+            apt-get install -y nginx python3-certbot-nginx
+            systemctl enable nginx
+            systemctl start nginx
+
+            ufw allow OpenSSH || true
+            ufw allow 'Nginx Full' || true
+            ufw --force enable || true
+
+            mkdir -p "${APP_DIR}"
+            if [ ! -d "${APP_DIR}/.git" ]; then
+              git clone -b "${BRANCH}" "${REPO}" "${APP_DIR}"
+            else
+              cd "${APP_DIR}"
+              git fetch
+              git checkout "${BRANCH}"
+              git pull --rebase
+            fi
+
+            cd "${APP_DIR}"
+
+            cp -n docker/.env.example docker/.env || true
+            cp -n docker/.env.functions.example docker/.env.functions || true
+            cp -n docker/.env.monitor.example docker/.env.monitor || true
+            cp -n backend/.env.example backend/.env || true
+
+            if grep -q '^PUBLIC_SITE_URL=' docker/.env 2>/dev/null; then
+              sed -i "s|^PUBLIC_SITE_URL=.|PUBLIC_SITE_URL=https://${DOMAIN}|" docker/.env
+            fi
+
+            if grep -q '^DOMAIN=' docker/.env 2>/dev/null; then
+              sed -i "s|^DOMAIN=.|DOMAIN=${DOMAIN}|" docker/.env
+            fi
+
+            if [ -d "${APP_DIR}/docker" ] && [ -f "${APP_DIR}/docker/scripts/start.sh" ]; then
+              cd "${APP_DIR}/docker"
+              bash scripts/start.sh || true
+              cd ..
+            fi
+
+            PORT_CANDIDATES="3000 5173 8080"
+            FRONT_PORT="3000"
+            for p in $PORT_CANDIDATES; do
+              if curl -sI "http://127.0.0.1:${p}" | head -n1 | grep -qi "HTTP/"; then
+                FRONT_PORT="$p"
+                break
+              fi
+            done
+
+            NGX_CONF="/etc/nginx/sites-available/${DOMAIN}"
+            {
+              echo "server {"
+              echo "  listen 80;"
+              echo "  listen [::]:80;"
+              printf "  server_name %s" "${DOMAIN}"
+              if [ "${INCLUDE_WWW}" = "true" ]; then
+                printf " www.%s" "${DOMAIN}"
+              fi
+              echo ";"
+              echo "  location / {"
+              echo "    proxy_pass http://127.0.0.1:${FRONT_PORT};"
+              echo "    proxy_set_header Host \$host;"
+              echo "    proxy_set_header X-Real-IP \$remote_addr;"
+              echo "    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;"
+              echo "    proxy_set_header X-Forwarded-Proto \$scheme;"
+              echo "  }"
+              echo "}"
+            } > "${NGX_CONF}"
+
+            ln -sf "${NGX_CONF}" "/etc/nginx/sites-enabled/${DOMAIN}"
+            nginx -t
+            systemctl reload nginx
+
+            if [ "${INCLUDE_WWW}" = "true" ]; then
+              certbot --nginx -d "${DOMAIN}" -d "www.${DOMAIN}" \
+                --email "${LE_EMAIL}" --agree-tos --no-eff-email -n || true
+            else
+              certbot --nginx -d "${DOMAIN}" \
+                --email "${LE_EMAIL}" --agree-tos --no-eff-email -n || true
+            fi
+
+            echo "=== Provision Finished ==="
+            echo "Check: https://${DOMAIN}"
