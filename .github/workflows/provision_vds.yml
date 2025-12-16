@@ -1,4 +1,5 @@
 name: Provision VDS
+
 on:
   workflow_dispatch:
     inputs:
@@ -14,10 +15,15 @@ on:
         description: "Email for Let's Encrypt"
         required: true
         default: "info@belbird.ru"
+      build_backend:
+        description: "Build and run backend (pm2)"
+        required: true
+        default: "true"
 
 jobs:
   provision:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,69 +40,101 @@ jobs:
             DOMAIN="${{ github.event.inputs.domain }}"
             INCLUDE_WWW="${{ github.event.inputs.include_www }}"
             LE_EMAIL="${{ github.event.inputs.email }}"
+            BUILD_BACKEND="${{ github.event.inputs.build_backend }}"
 
             REPO="${{ secrets.REPO || 'https://github.com/daniillazarev2301/belbird-ai-marketplace' }}"
             BRANCH="${{ secrets.BRANCH || 'main' }}"
             APP_DIR="${{ secrets.APP_DIR || '/opt/belbird' }}"
 
+            NODE_VERSION="18"
+            BACKEND_PORT="4000"
+
+            # System and packages
             apt-get update -y
             apt-get upgrade -y
-            apt-get install -y curl git ca-certificates gnupg lsb-release
+            apt-get install -y curl git ca-certificates gnupg lsb-release nginx python3-certbot-nginx
 
+            # Docker (optional for Supabase stack)
             if ! command -v docker >/dev/null 2>&1; then
               curl -fsSL https://get.docker.com | sh
               systemctl enable docker
               systemctl start docker
             fi
 
-            apt-get install -y nginx python3-certbot-nginx
             systemctl enable nginx
             systemctl start nginx
-
             ufw allow OpenSSH || true
             ufw allow 'Nginx Full' || true
             ufw --force enable || true
 
+            # Clone/update repo
             mkdir -p "${APP_DIR}"
             if [ ! -d "${APP_DIR}/.git" ]; then
               git clone -b "${BRANCH}" "${REPO}" "${APP_DIR}"
             else
-              cd "${APP_DIR}"
-              git fetch
-              git checkout "${BRANCH}"
-              git pull --rebase
+              (cd "${APP_DIR}" && git fetch && git checkout "${BRANCH}" && git pull --rebase)
             fi
 
+            # Prepare envs
             cd "${APP_DIR}"
-
             cp -n docker/.env.example docker/.env || true
             cp -n docker/.env.functions.example docker/.env.functions || true
             cp -n docker/.env.monitor.example docker/.env.monitor || true
             cp -n backend/.env.example backend/.env || true
 
             if grep -q '^PUBLIC_SITE_URL=' docker/.env 2>/dev/null; then
-              sed -i "s|^PUBLIC_SITE_URL=.|PUBLIC_SITE_URL=https://${DOMAIN}|" docker/.env
+              sed -i "s|^PUBLIC_SITE_URL=.*|PUBLIC_SITE_URL=https://${DOMAIN}|" docker/.env
             fi
 
             if grep -q '^DOMAIN=' docker/.env 2>/dev/null; then
-              sed -i "s|^DOMAIN=.|DOMAIN=${DOMAIN}|" docker/.env
+              sed -i "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" docker/.env
             fi
 
+            # OPTIONAL: start Supabase stack if scripts exist
             if [ -d "${APP_DIR}/docker" ] && [ -f "${APP_DIR}/docker/scripts/start.sh" ]; then
-              cd "${APP_DIR}/docker"
-              bash scripts/start.sh || true
-              cd ..
+              (cd "${APP_DIR}/docker" && bash scripts/start.sh || true)
             fi
 
-            PORT_CANDIDATES="3000 5173 8080"
-            FRONT_PORT="3000"
-            for p in $PORT_CANDIDATES; do
-              if curl -sI "http://127.0.0.1:${p}" | head -n1 | grep -qi "HTTP/"; then
-                FRONT_PORT="$p"
-                break
-              fi
-            done
+            # Install Node.js and build frontend
+            if ! command -v node >/dev/null 2>&1; then
+              curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
+              apt-get install -y nodejs
+            fi
 
+            (cd "${APP_DIR}" && npm ci || npm install)
+            (cd "${APP_DIR}" && npm run build)
+
+            DIST_DIR="${APP_DIR}/dist"
+            if [ ! -d "${DIST_DIR}" ]; then
+              echo "Build output not found at ${DIST_DIR}. Check build script." >&2
+              exit 1
+            fi
+
+            # Backend (pm2) — run on PORT=4000
+            BACKEND_UP="no"
+            if [ "${BUILD_BACKEND}" = "true" ]; then
+              if ! command -v pm2 >/dev/null 2>&1; then
+                npm install -g pm2
+              fi
+
+              (cd "${APP_DIR}/backend" && npm ci || npm install || true)
+
+              if [ -f "${APP_DIR}/backend/node_modules/.bin/prisma" ]; then
+                (cd "${APP_DIR}/backend" && npx prisma migrate deploy || true)
+              fi
+
+              (cd "${APP_DIR}/backend" && PORT=${BACKEND_PORT} pm2 start npm --name belbird-backend -- run start || true)
+              sleep 3
+
+              if curl -sI "http://127.0.0.1:${BACKEND_PORT}" | head -n1 | grep -qi "HTTP/"; then
+                BACKEND_UP="yes"
+              fi
+
+              pm2 save || true
+              pm2 startup || true
+            fi
+
+            # Nginx: static SPA + optional /api to backend
             NGX_CONF="/etc/nginx/sites-available/${DOMAIN}"
             {
               echo "server {"
@@ -107,13 +145,20 @@ jobs:
                 printf " www.%s" "${DOMAIN}"
               fi
               echo ";"
+              echo "  root ${DIST_DIR};"
+              echo "  index index.html;"
               echo "  location / {"
-              echo "    proxy_pass http://127.0.0.1:${FRONT_PORT};"
-              echo "    proxy_set_header Host \$host;"
-              echo "    proxy_set_header X-Real-IP \$remote_addr;"
-              echo "    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;"
-              echo "    proxy_set_header X-Forwarded-Proto \$scheme;"
+              echo "    try_files \$uri /index.html;"
               echo "  }"
+              if [ "${BACKEND_UP}" = "yes" ]; then
+                echo "  location /api {"
+                echo "    proxy_pass http://127.0.0.1:${BACKEND_PORT};"
+                echo "    proxy_set_header Host \$host;"
+                echo "    proxy_set_header X-Real-IP \$remote_addr;"
+                echo "    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;"
+                echo "    proxy_set_header X-Forwarded-Proto \$scheme;"
+                echo "  }"
+              fi
               echo "}"
             } > "${NGX_CONF}"
 
@@ -121,12 +166,11 @@ jobs:
             nginx -t
             systemctl reload nginx
 
+            # SSL
             if [ "${INCLUDE_WWW}" = "true" ]; then
-              certbot --nginx -d "${DOMAIN}" -d "www.${DOMAIN}" \
-                --email "${LE_EMAIL}" --agree-tos --no-eff-email -n || true
+              certbot --nginx -d "${DOMAIN}" -d "www.${DOMAIN}" --email "${LE_EMAIL}" --agree-tos --no-eff-email -n || true
             else
-              certbot --nginx -d "${DOMAIN}" \
-                --email "${LE_EMAIL}" --agree-tos --no-eff-email -n || true
+              certbot --nginx -d "${DOMAIN}" --email "${LE_EMAIL}" --agree-tos --no-eff-email -n || true
             fi
 
             echo "=== Provision Finished ==="
