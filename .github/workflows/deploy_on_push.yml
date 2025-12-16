@@ -1,0 +1,10 @@
+name: Deploy on Push on: push: branches: ["main"] jobs: deploy: runs-on: ubuntu-latest steps: - name: Checkout uses: │
+│ actions/checkout@v4 - name: Deploy to VDS via SSH uses: appleboy/ssh-action@v1.0.3 with: host: ${{ secrets.SSH_HOST  │
+│ }} username: ${{ secrets.SSH_USER }} password: ${{ secrets.SSH_PASSWORD }} script: | set -euo pipefail APP_DIR="${{  │
+│ secrets.APP_DIR || '/opt/belbird' }}" BRANCH="${{ secrets.BRANCH || 'main' }}" if [ ! -d "${APP_DIR}/.git" ]; then   │
+│ git clone -b "${BRANCH}" "https://github.com/daniillazarev2301/belbird-ai-marketplace" "${APP_DIR}" fi cd            │
+│ "${APP_DIR}" git fetch git checkout "${BRANCH}" git pull --rebase if [ -d "${APP_DIR}/docker" ] && [ -f              │
+│ "${APP_DIR}/docker/scripts/start.sh" ]; then (cd "${APP_DIR}/docker" && bash scripts/start.sh || true) else if [ -f  │
+│ "${APP_DIR}/docker-compose.yml" ] || [ -f "${APP_DIR}/docker/docker-compose.yml" ]; then (cd "${APP_DIR}" && docker  │
+│ compose pull || true) (cd "${APP_DIR}" && docker compose build || true) (cd "${APP_DIR}" && docker compose up -d ||  │
+│ true) fi fi echo "=== Deploy Finished ==="
