@@ -1,4 +1,4 @@
-import { Search, ShoppingCart, User, Menu, Heart, Mic, Percent, Camera } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, Heart, Mic, Camera } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,10 @@ const Header = () => {
   }, [searchQuery]);
 
   const navLinks = [
-    { label: "Акции", href: "/catalog?sale=true", highlight: true, icon: Percent },
+    { label: "Оптовикам", href: "/wholesale", highlight: true },
+    { label: "О компании", href: "/about" },
+    { label: "Отзывы", href: "/reviews" },
+    { label: "Контакты", href: "/contacts" },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -127,13 +130,12 @@ const Header = () => {
               key={link.href}
               to={link.href}
               className={cn(
-                "flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary",
+                "text-sm font-medium transition-colors hover:text-primary",
                 link.highlight
-                  ? "text-secondary font-semibold"
+                  ? "text-primary font-semibold"
                   : "text-muted-foreground"
               )}
             >
-              {link.icon && <link.icon className="h-4 w-4" />}
               {link.label}
             </Link>
           ))}
