@@ -13,12 +13,10 @@ const Footer = () => {
   const social = settings?.social;
 
   const categories = [
-    { label: "Собаки", href: "/catalog/dogs" },
-    { label: "Кошки", href: "/catalog/cats" },
-    { label: "Птицы", href: "/catalog/birds" },
-    { label: "Грызуны", href: "/catalog/rodents" },
-    { label: "Рыбки", href: "/catalog/fish" },
-    { label: "Сельхоз", href: "/catalog/farm" },
+    { label: "Суточная птица", href: "/catalog?category=chicks" },
+    { label: "Корма", href: "/catalog?category=feed" },
+    { label: "Инкубационное яйцо", href: "/catalog?category=eggs" },
+    { label: "Оборудование", href: "/catalog?category=equipment" },
   ];
 
   const support = [
@@ -29,10 +27,10 @@ const Footer = () => {
   ];
 
   const company = [
-    { label: "О нас", href: "/about" },
+    { label: "О компании", href: "/about" },
+    { label: "Оптовикам", href: "/wholesale" },
+    { label: "Отзывы", href: "/reviews" },
     { label: "Блог", href: "/blog" },
-    { label: "Карьера", href: "/careers" },
-    { label: "Партнёрам", href: "/partners" },
   ];
 
   return (
@@ -52,7 +50,7 @@ const Footer = () => {
               <span className="font-serif text-xl font-semibold">{siteName}</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
-              Зоотовары для домашних и сельскохозяйственных животных
+              Поставщик суточной птицы, кормов и оборудования для птицеводства
             </p>
             
             {/* Contacts */}

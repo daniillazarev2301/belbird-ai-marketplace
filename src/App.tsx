@@ -26,6 +26,12 @@ const Compare = lazy(() => import("./pages/Compare"));
 const PaymentResult = lazy(() => import("./pages/PaymentResult"));
 const Install = lazy(() => import("./pages/Install"));
 
+// New agro pages
+const Wholesale = lazy(() => import("./pages/Wholesale"));
+const About = lazy(() => import("./pages/About"));
+const Reviews = lazy(() => import("./pages/Reviews"));
+const Contacts = lazy(() => import("./pages/Contacts"));
+
 // Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
@@ -91,14 +97,18 @@ const App = () => (
                 <Route path="/compare" element={<Compare />} />
                 <Route path="/install" element={<Install />} />
                 
+                {/* Main Pages */}
+                <Route path="/wholesale" element={<Wholesale />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/reviews" element={<Reviews />} />
+                <Route path="/contacts" element={<Contacts />} />
+                
                 {/* Static Pages */}
-                <Route path="/about" element={<StaticPage />} />
                 <Route path="/privacy" element={<StaticPage />} />
                 <Route path="/terms" element={<StaticPage />} />
                 <Route path="/delivery" element={<StaticPage />} />
                 <Route path="/returns" element={<StaticPage />} />
                 <Route path="/faq" element={<StaticPage />} />
-                <Route path="/contacts" element={<StaticPage />} />
                 <Route path="/blog" element={<Blog />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/careers" element={<StaticPage />} />
